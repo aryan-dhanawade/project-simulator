@@ -1,0 +1,14 @@
+# Node.js .gitignore
+
+# Node modules
+node_modules/
+
+# Operating system files
+.DS_Store
+
+# Environment variables
+.env
+
+# Build artifacts
+/dist/
+/build/
