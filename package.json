@@ -1,0 +1,1 @@
+{\n  "name": "project-simulator",\n  "version": "1.0.0",\n  "description": "System Dynamics Simulation for Software Projects",\n  "main": "index.html",\n  "scripts": {\n    "test": "echo 'Error: no test specified' && exit 1",\n    "dev": "echo 'Development script'"\n  }\n}
