@@ -3,29 +3,1339 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulation with D3.js</title>
-    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <title>Software Project Simulator</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-panel: #12121a;
+            --bg-card: #1a1a25;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #ff006e;
+            --accent-warning: #ffbe0b;
+            --accent-success: #06ffa5;
+            --accent-danger: #ff4757;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --border: #2a2a3a;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* View Transitions */
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+            animation-duration: 0.25s;
+            animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(180deg, var(--bg-panel) 0%, transparent 100%);
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .week-indicator {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            color: var(--accent-primary);
+        }
+        
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        
+        .status-active { background: rgba(6, 255, 165, 0.15); color: var(--accent-success); border: 1px solid var(--accent-success); }
+        .status-crunch { background: rgba(255, 190, 11, 0.15); color: var(--accent-warning); border: 1px solid var(--accent-warning); }
+        .status-failed { background: rgba(255, 71, 87, 0.15); color: var(--accent-danger); border: 1px solid var(--accent-danger); }
+        
+        /* Main Layout */
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+        
+        /* Panels */
+        .panel {
+            background: var(--bg-panel);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 24px;
+        }
+        
+        .panel-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        /* Controls Section */
+        .control-group {
+            margin-bottom: 24px;
+        }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .control-name {
+            color: var(--text-secondary);
+        }
+        
+        .control-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-primary);
+            font-weight: 700;
+        }
+        
+        /* Custom Range Slider */
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-card);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            transition: transform 0.2s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
+        /* Scenario Buttons */
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .scenario-btn {
+            padding: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .scenario-btn:hover {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .scenario-btn.active {
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+            border-color: var(--accent-primary);
+        }
+        
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--accent-secondary);
+            color: var(--accent-secondary);
+        }
+        
+        /* Visualization Area */
+        .viz-container {
+            position: relative;
+            min-height: 600px;
+            background: var(--bg-dark);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        #network-graph {
+            width: 100%;
+            height: 500px;
+        }
+        
+        /* Module Nodes */
+        .module-node {
+            cursor: pointer;
+        }
+        
+        .module-circle {
+            transition: all 0.3s ease;
+        }
+        
+        .module-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            fill: var(--text-primary);
+            pointer-events: none;
+            text-anchor: middle;
+        }
+        
+        .bug-particle {
+            pointer-events: none;
+        }
+        
+        /* Connection Lines */
+        .link {
+            stroke: var(--border);
+            stroke-width: 2;
+            transition: stroke 0.3s;
+        }
+        
+        .link.coupled {
+            stroke: var(--accent-warning);
+            stroke-width: 3;
+        }
+        
+        /* Metrics Display */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .metric-card {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .metric-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .metric-delta {
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        
+        .positive { color: var(--accent-success); }
+        .negative { color: var(--accent-danger); }
+        .neutral { color: var(--accent-warning); }
+        
+        /* Time Series Chart */
+        #timeline-chart {
+            width: 100%;
+            height: 150px;
+            margin-top: 20px;
+        }
+        
+        /* Post-mortem Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--bg-panel);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 40px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-title {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .modal-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+        
+        .postmortem-section {
+            margin-bottom: 24px;
+        }
+        
+        .postmortem-section h3 {
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+        
+        .damage-bar {
+            height: 24px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        
+        .damage-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 1s ease;
+        }
+        
+        .damage-label {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulsing {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes bug-move {
+            0% { offset-distance: 0%; }
+            100% { offset-distance: 100%; }
+        }
+        
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .container {
+                grid-template-columns: 280px 1fr 280px;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .viz-container {
+                order: -1;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>System Dynamics Simulation</h1>
-    <div id="simulation"></div>
+    <header class="header">
+        <div class="logo">◈ PROJECT_SIM</div>
+        <div class="week-indicator">Week <span id="week-display">1</span> / 52</div>
+        <div class="status-badge status-active" id="project-status">Active</div>
+    </header>
+    
+    <div class="container">
+        <!-- Left Panel: Controls -->
+        <div class="panel">
+            <div class="panel-title">⚙️ Simulation Parameters</div>
+            
+            <div class="scenario-grid">
+                <button class="scenario-btn active" onclick="loadScenario('startup')">Startup Crunch</button>
+                <button class="scenario-btn" onclick="loadScenario('enterprise')">Enterprise</button>
+                <button class="scenario-btn" onclick="loadScenario('agile')">Agile TDD</button>
+                <button class="scenario-btn" onclick="loadScenario('legacy')">Legacy Rescue</button>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span class="control-name">Team Size</span>
+                    <span class="control-value" id="val-team-size">5</span>
+                </div>
+                <input type="range" id="team-size" min="1" max="20" value="5" oninput="updateParam('team-size', this.value)">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span class="control-name">Deadline Pressure</span>
+                    <span class="control-value" id="val-deadline">50%</span>
+                </div>
+                <input type="range" id="deadline-pressure" min="0" max="100" value="50" oninput="updateParam('deadline-pressure', this.value)">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span class="control-name">Meeting Overhead</span>
+                    <span class="control-value" id="val-meetings">20%</span>
+                </div>
+                <input type="range" id="meeting-overhead" min="0" max="60" value="20" oninput="updateParam('meeting-overhead', this.value)">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span class="control-name">Test Coverage</span>
+                    <span class="control-value" id="val-testing">40%</span>
+                </div>
+                <input type="range" id="test-coverage" min="0" max="100" value="40" oninput="updateParam('test-coverage', this.value)">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span class="control-name">Tech Debt</span>
+                    <span class="control-value" id="val-debt">30%</span>
+                </div>
+                <input type="range" id="tech-debt" min="0" max="100" value="30" oninput="updateParam('tech-debt', this.value)">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span class="control-name">Module Coupling</span>
+                    <span class="control-value" id="val-coupling">0.5</span>
+                </div>
+                <input type="range" id="coupling" min="0" max="100" value="50" oninput="updateParam('coupling', this.value)">
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="play-btn" onclick="toggleSimulation()">▶ Start</button>
+                <button class="btn btn-secondary" onclick="resetSimulation()">↺ Reset</button>
+            </div>
+        </div>
+        
+        <!-- Center: Visualization -->
+        <div class="viz-container">
+            <div id="network-graph"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: var(--accent-success)"></div>
+                    <span>Healthy (0 bugs)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: var(--accent-warning)"></div>
+                    <span>Warning (3-5 bugs)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: var(--accent-danger)"></div>
+                    <span>Critical (6+ bugs)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: var(--accent-primary)"></div>
+                    <span>Bug Particle</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel: Metrics -->
+        <div class="panel">
+            <div class="panel-title">📊 Live Metrics</div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Code Stability</div>
+                    <div class="metric-value" id="metric-stability">85%</div>
+                    <div class="metric-delta neutral" id="delta-stability">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Team Burnout</div>
+                    <div class="metric-value" id="metric-burnout">12%</div>
+                    <div class="metric-delta positive" id="delta-burnout">Low</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Features Done</div>
+                    <div class="metric-value" id="metric-features">0</div>
+                    <div class="metric-delta positive" id="delta-features">+0 this week</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Bugs</div>
+                    <div class="metric-value" id="metric-bugs">0</div>
+                    <div class="metric-delta negative" id="delta-bugs">Watch closely</div>
+                </div>
+            </div>
+            
+            <div class="panel-title">📈 Timeline</div>
+            <div id="timeline-chart"></div>
+            
+            <div style="margin-top: 20px; padding: 16px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">Simulation Insights</div>
+                <div id="insights-text" style="font-size: 0.9rem; line-height: 1.5;">
+                    Adjust parameters to see how bugs propagate through module dependencies. High coupling + low testing = rapid bug spread.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+    
+    <!-- Post-mortem Modal -->
+    <div class="modal-overlay" id="postmortem-modal">
+        <div class="modal">
+            <h2 class="modal-title">Project Post-Mortem</h2>
+            <p class="modal-subtitle" id="postmortem-subtitle">Week 52 - Project Complete</p>
+            
+            <div class="postmortem-section">
+                <h3>📉 Damage Analysis</h3>
+                <div class="damage-bar">
+                    <div class="damage-fill" style="background: var(--accent-danger); width: 0%" id="damage-bugs"></div>
+                    <span class="damage-label">Bug Propagation</span>
+                </div>
+                <div class="damage-bar">
+                    <div class="damage-fill" style="background: var(--accent-warning); width: 0%" id="damage-burnout"></div>
+                    <span class="damage-label">Team Burnout</span>
+                </div>
+                <div class="damage-bar">
+                    <div class="damage-fill" style="background: var(--accent-secondary); width: 0%" id="damage-debt"></div>
+                    <span class="damage-label">Tech Debt Accumulation</span>
+                </div>
+                <div class="damage-bar">
+                    <div class="damage-fill" style="background: var(--accent-primary); width: 0%" id="damage-overhead"></div>
+                    <span class="damage-label">Meeting Overhead</span>
+                </div>
+            </div>
+            
+            <div class="postmortem-section">
+                <h3>💡 Key Insights</h3>
+                <p id="postmortem-insights" style="line-height: 1.6; color: var(--text-secondary);"></p>
+            </div>
+            
+            <div class="postmortem-section">
+                <h3>🎯 What Could Have Changed</h3>
+                <ul id="postmortem-recommendations" style="color: var(--text-secondary); line-height: 1.8; margin-left: 20px;"></ul>
+            </div>
+            
+            <button class="btn btn-primary" onclick="closePostmortem()" style="width: 100%; margin-top: 20px;">Run New Simulation</button>
+        </div>
+    </div>
+    
     <script>
-        // Initialize the system dynamics simulation engine
-        const simulation = {}; // Placeholder for system dynamics engine
-
-        // D3.js code to create an interactive visualization
-        d3.select('#simulation')
-            .append('svg')
-            .attr('width', 800)
-            .attr('height', 600)
-            .append('circle')
-            .attr('cx', 400)
-            .attr('cy', 300)
-            .attr('r', 50)
-            .style('fill', 'blue');
-
-        // Integrate simulation with D3.js visualization
-        // Add your integration logic here
+        // ==========================================
+        // SIMULATION ENGINE (Pure Functions)
+        // ==========================================
+        
+        const DEFAULT_PARAMS = {
+            teamSize: 5,
+            deadlinePressure: 50,
+            meetingOverhead: 20,
+            testCoverage: 40,
+            techDebt: 30,
+            coupling: 50
+        };
+        
+        const SCENARIOS = {
+            startup: {
+                teamSize: 3,
+                deadlinePressure: 90,
+                meetingOverhead: 10,
+                testCoverage: 20,
+                techDebt: 60,
+                coupling: 70
+            },
+            enterprise: {
+                teamSize: 15,
+                deadlinePressure: 40,
+                meetingOverhead: 40,
+                testCoverage: 80,
+                techDebt: 20,
+                coupling: 30
+            },
+            agile: {
+                teamSize: 8,
+                deadlinePressure: 50,
+                meetingOverhead: 15,
+                testCoverage: 90,
+                techDebt: 15,
+                coupling: 40
+            },
+            legacy: {
+                teamSize: 6,
+                deadlinePressure: 70,
+                meetingOverhead: 25,
+                testCoverage: 30,
+                techDebt: 80,
+                coupling: 85
+            }
+        };
+        
+        // Module graph structure - weighted edges represent coupling
+        const MODULES = [
+            { id: 'auth', name: 'Auth', x: 0, y: 0, bugs: 0 },
+            { id: 'api', name: 'API Gateway', x: 0, y: 0, bugs: 0 },
+            { id: 'payments', name: 'Payments', x: 0, y: 0, bugs: 0 },
+            { id: 'database', name: 'Database', x: 0, y: 0, bugs: 0 },
+            { id: 'frontend', name: 'Frontend', x: 0, y: 0, bugs: 0 },
+            { id: 'notifications', name: 'Notifications', x: 0, y: 0, bugs: 0 },
+            { id: 'analytics', name: 'Analytics', x: 0, y: 0, bugs: 0 },
+            { id: 'search', name: 'Search', x: 0, y: 0, bugs: 0 }
+        ];
+        
+        const LINKS = [
+            { source: 'auth', target: 'api', weight: 0.9 },
+            { source: 'api', target: 'payments', weight: 0.8 },
+            { source: 'api', target: 'database', weight: 0.7 },
+            { source: 'frontend', target: 'api', weight: 0.9 },
+            { source: 'auth', target: 'notifications', weight: 0.4 },
+            { source: 'database', target: 'analytics', weight: 0.6 },
+            { source: 'database', target: 'search', weight: 0.5 },
+            { source: 'payments', target: 'notifications', weight: 0.3 },
+            { source: 'api', target: 'search', weight: 0.4 }
+        ];
+        
+        // Simulation State
+        let state = {
+            week: 1,
+            isRunning: false,
+            params: { ...DEFAULT_PARAMS },
+            modules: MODULES.map(m => ({ ...m, bugs: 0, prevBugs: 0 })),
+            stability: 100,
+            burnout: 0,
+            featuresCompleted: 0,
+            history: [],
+            bugParticles: []
+        };
+        
+        let simulationInterval = null;
+        let svg, simulation, link, node;
+        let timelineSvg;
+        
+        // Pure function: Calculate next state
+        function step(currentState) {
+            const { params, modules, week, stability, burnout, featuresCompleted } = currentState;
+            
+            // Calculate productivity
+            const effectiveTeam = params.teamSize * (1 - params.meetingOverhead / 100);
+            const pressureMultiplier = 1 + (params.deadlinePressure / 100) * 0.5;
+            const burnoutPenalty = Math.max(0, 1 - (burnout / 100) * 2);
+            const testingBonus = params.testCoverage / 100;
+            
+            const productivity = effectiveTeam * pressureMultiplier * burnoutPenalty * (0.5 + testingBonus * 0.5);
+            
+            // Bug generation and propagation
+            const newModules = modules.map(m => {
+                // New bugs based on tech debt and deadline pressure
+                const bugChance = (params.techDebt / 100) * (params.deadlinePressure / 100) * 0.3;
+                const newBugs = Math.random() < bugChance ? Math.floor(Math.random() * 2) + 1 : 0;
+                
+                // Spread from neighbors
+                let spreadBugs = 0;
+                LINKS.forEach(l => {
+                    if (l.source === m.id || l.target === m.id) {
+                        const neighborId = l.source === m.id ? l.target : l.source;
+                        const neighbor = modules.find(n => n.id === neighborId);
+                        if (neighbor && neighbor.bugs > 0) {
+                            const spreadChance = (params.coupling / 100) * l.weight * (1 - testingBonus) * 0.3;
+                            if (Math.random() < spreadChance) {
+                                spreadBugs += Math.floor(neighbor.bugs * 0.3);
+                            }
+                        }
+                    }
+                });
+                
+                // Bug fixing based on testing
+                const fixedBugs = Math.floor(Math.random() * testingBonus * 2);
+                const totalBugs = Math.max(0, Math.min(10, m.bugs + newBugs + spreadBugs - fixedBugs));
+                
+                return { ...m, prevBugs: m.bugs, bugs: totalBugs };
+            });
+            
+            // Calculate new metrics
+            const totalBugs = newModules.reduce((sum, m) => sum + m.bugs, 0);
+            const newStability = Math.max(0, 100 - (totalBugs * 5) - (params.techDebt * 0.3));
+            
+            // Burnout increases with deadline pressure and decreases with team size adequacy
+            const burnoutChange = (params.deadlinePressure / 100) * 5 - (params.teamSize > 5 ? 1 : 0);
+            const newBurnout = Math.min(100, Math.max(0, burnout + burnoutChange - (productivity * 0.1)));
+            
+            // Features completed
+            const newFeatures = Math.floor(productivity * (stability / 100));
+            
+            return {
+                ...currentState,
+                week: week + 1,
+                modules: newModules,
+                stability: newStability,
+                burnout: newBurnout,
+                featuresCompleted: featuresCompleted + newFeatures,
+                history: [...currentState.history, {
+                    week,
+                    stability: newStability,
+                    burnout: newBurnout,
+                    bugs: totalBugs,
+                    features: newFeatures
+                }]
+            };
+        }
+        
+        // ==========================================
+        // VISUALIZATION (D3.js)
+        // ==========================================
+        
+        function initVisualization() {
+            const container = document.getElementById('network-graph');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            svg = d3.select('#network-graph')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            // Create force simulation
+            simulation = d3.forceSimulation(state.modules)
+                .force('link', d3.forceLink(LINKS).id(d => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(40));
+            
+            // Draw links
+            link = svg.append('g')
+                .selectAll('line')
+                .data(LINKS)
+                .enter()
+                .append('line')
+                .attr('class', 'link')
+                .attr('stroke-width', d => 1 + d.weight * 3);
+            
+            // Draw nodes
+            const nodeGroup = svg.append('g')
+                .selectAll('g')
+                .data(state.modules)
+                .enter()
+                .append('g')
+                .attr('class', 'module-node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+            
+            node = nodeGroup.append('circle')
+                .attr('class', 'module-circle')
+                .attr('r', 30)
+                .attr('fill', d => getNodeColor(d.bugs))
+                .attr('stroke', '#2a2a3a')
+                .attr('stroke-width', 2);
+            
+            nodeGroup.append('text')
+                .attr('class', 'module-label')
+                .attr('dy', 45)
+                .text(d => d.name);
+            
+            // Add bug count text
+            nodeGroup.append('text')
+                .attr('class', 'bug-count')
+                .attr('dy', 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'white')
+                .attr('font-family', 'JetBrains Mono')
+                .attr('font-size', '14px')
+                .attr('font-weight', 'bold')
+                .text(d => d.bugs);
+            
+            // Tooltip
+            nodeGroup.on('mouseover', function(event, d) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.innerHTML = `
+                    <strong>${d.name}</strong><br>
+                    Bugs: ${d.bugs}/10<br>
+                    Status: ${d.bugs === 0 ? 'Healthy' : d.bugs < 4 ? 'Warning' : 'Critical'}
+                `;
+                tooltip.classList.add('show');
+                tooltip.style.left = event.pageX + 10 + 'px';
+                tooltip.style.top = event.pageY + 10 + 'px';
+            }).on('mouseout', () => {
+                document.getElementById('tooltip').classList.remove('show');
+            });
+            
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                
+                nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+            
+            initTimeline();
+        }
+        
+        function getNodeColor(bugs) {
+            if (bugs === 0) return '#06ffa5';
+            if (bugs < 4) return '#ffbe0b';
+            if (bugs < 7) return '#ff006e';
+            return '#ff4757';
+        }
+        
+        function updateVisualization() {
+            // Update node colors
+            svg.selectAll('.module-circle')
+                .transition()
+                .duration(300)
+                .attr('fill', d => getNodeColor(d.bugs));
+            
+            // Update bug counts
+            svg.selectAll('.bug-count')
+                .text(d => d.bugs);
+            
+            // Animate bug particles
+            animateBugSpread();
+            
+            // Update timeline
+            updateTimeline();
+        }
+        
+        function animateBugSpread() {
+            // Create bug particles spreading along links
+            LINKS.forEach(l => {
+                const sourceNode = state.modules.find(m => m.id === l.source.id || m.id === l.source);
+                const targetNode = state.modules.find(m => m.id === l.target.id || m.id === l.target);
+                
+                if (sourceNode && targetNode && sourceNode.bugs > 0 && sourceNode.bugs > sourceNode.prevBugs) {
+                    // Create particle
+                    const particle = svg.append('circle')
+                        .attr('class', 'bug-particle')
+                        .attr('r', 4)
+                        .attr('fill', '#ff4757')
+                        .attr('cx', sourceNode.x)
+                        .attr('cy', sourceNode.y);
+                    
+                    particle.transition()
+                        .duration(1000)
+                        .ease(d3.easeLinear)
+                        .attr('cx', targetNode.x)
+                        .attr('cy', targetNode.y)
+                        .on('end', function() {
+                            d3.select(this).remove();
+                        });
+                }
+            });
+        }
+        
+        function initTimeline() {
+            const container = document.getElementById('timeline-chart');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            timelineSvg = d3.select('#timeline-chart')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+        }
+        
+        function updateTimeline() {
+            if (state.history.length < 2) return;
+            
+            const container = document.getElementById('timeline-chart');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const margin = { top: 10, right: 10, bottom: 20, left: 30 };
+            
+            timelineSvg.selectAll('*').remove();
+            
+            const x = d3.scaleLinear()
+                .domain([1, Math.max(52, state.week)])
+                .range([margin.left, width - margin.right]);
+            
+            const y = d3.scaleLinear()
+                .domain([0, 100])
+                .range([height - margin.bottom, margin.top]);
+            
+            // Stability line
+            const stabilityLine = d3.line()
+                .x(d => x(d.week))
+                .y(d => y(d.stability))
+                .curve(d3.curveMonotoneX);
+            
+            timelineSvg.append('path')
+                .datum(state.history)
+                .attr('fill', 'none')
+                .attr('stroke', '#00d4ff')
+                .attr('stroke-width', 2)
+                .attr('d', stabilityLine);
+            
+            // Burnout line
+            const burnoutLine = d3.line()
+                .x(d => x(d.week))
+                .y(d => y(d.burnout))
+                .curve(d3.curveMonotoneX);
+            
+            timelineSvg.append('path')
+                .datum(state.history)
+                .attr('fill', 'none')
+                .attr('stroke', '#ff006e')
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '5,5')
+                .attr('d', burnoutLine);
+            
+            // Axes
+            timelineSvg.append('g')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(5).tickFormat(d => 'W' + d))
+                .attr('color', '#666');
+            
+            timelineSvg.append('g')
+                .attr('transform', `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y).ticks(3))
+                .attr('color', '#666');
+        }
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        // ==========================================
+        // UI CONTROLS
+        // ==========================================
+        
+        function updateParam(id, value) {
+            const displayId = 'val-' + id.replace('-pressure', '').replace('-overhead', '').replace('-coverage', '');
+            const display = document.getElementById(displayId);
+            
+            if (id === 'team-size') {
+                state.params.teamSize = parseInt(value);
+                if (display) display.textContent = value;
+            } else if (id === 'deadline-pressure') {
+                state.params.deadlinePressure = parseInt(value);
+                if (display) display.textContent = value + '%';
+            } else if (id === 'meeting-overhead') {
+                state.params.meetingOverhead = parseInt(value);
+                if (display) display.textContent = value + '%';
+            } else if (id === 'test-coverage') {
+                state.params.testCoverage = parseInt(value);
+                if (display) display.textContent = value + '%';
+            } else if (id === 'tech-debt') {
+                state.params.techDebt = parseInt(value);
+                if (display) display.textContent = value + '%';
+            } else if (id === 'coupling') {
+                state.params.coupling = parseInt(value);
+                if (display) display.textContent = (value / 100).toFixed(1);
+            }
+            
+            updateInsights();
+        }
+        
+        function updateInsights() {
+            const { deadlinePressure, testCoverage, techDebt, coupling, meetingOverhead } = state.params;
+            let insight = '';
+            
+            if (coupling > 70 && testCoverage < 40) {
+                insight = '⚠️ High coupling with low test coverage creates perfect conditions for bug pandemics. Bugs will spread rapidly between modules.';
+            } else if (deadlinePressure > 80 && techDebt > 60) {
+                insight = '🔥 Crunch mode with high tech debt is unsustainable. Expect exponential bug growth and team burnout.';
+            } else if (meetingOverhead > 40) {
+                insight = '📅 Excessive meetings are killing productivity. Team has less than 60% time for actual development.';
+            } else if (testCoverage > 80 && techDebt < 30) {
+                insight = '✅ Excellent practices! High testing and low debt create a resilient codebase resistant to bug propagation.';
+            } else {
+                insight = 'Adjust parameters to see how different factors affect bug propagation, team health, and project delivery.';
+            }
+            
+            document.getElementById('insights-text').textContent = insight;
+        }
+        
+        function loadScenario(name) {
+            const scenario = SCENARIOS[name];
+            if (!scenario) return;
+            
+            // Update buttons
+            document.querySelectorAll('.scenario-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update sliders
+            document.getElementById('team-size').value = scenario.teamSize;
+            document.getElementById('deadline-pressure').value = scenario.deadlinePressure;
+            document.getElementById('meeting-overhead').value = scenario.meetingOverhead;
+            document.getElementById('test-coverage').value = scenario.testCoverage;
+            document.getElementById('tech-debt').value = scenario.techDebt;
+            document.getElementById('coupling').value = scenario.coupling;
+            
+            // Update params
+            Object.keys(scenario).forEach(key => {
+                state.params[key] = scenario[key];
+            });
+            
+            // Update displays
+            updateParam('team-size', scenario.teamSize);
+            updateParam('deadline-pressure', scenario.deadlinePressure);
+            updateParam('meeting-overhead', scenario.meetingOverhead);
+            updateParam('test-coverage', scenario.testCoverage);
+            updateParam('tech-debt', scenario.techDebt);
+            updateParam('coupling', scenario.coupling);
+            
+            resetSimulation();
+        }
+        
+        // ==========================================
+        // SIMULATION CONTROL
+        // ==========================================
+        
+        function toggleSimulation() {
+            const btn = document.getElementById('play-btn');
+            
+            if (state.isRunning) {
+                clearInterval(simulationInterval);
+                state.isRunning = false;
+                btn.textContent = '▶ Resume';
+                document.getElementById('project-status').textContent = 'Paused';
+                document.getElementById('project-status').className = 'status-badge status-crunch';
+            } else {
+                if (state.week >= 52 || state.stability <= 0) {
+                    resetSimulation();
+                }
+                state.isRunning = true;
+                btn.textContent = '⏸ Pause';
+                document.getElementById('project-status').textContent = 'Running';
+                document.getElementById('project-status').className = 'status-badge status-active';
+                
+                simulationInterval = setInterval(() => {
+                    tick();
+                }, 800);
+            }
+        }
+        
+        function tick() {
+            if (state.week >= 52 || state.stability <= 0) {
+                endSimulation();
+                return;
+            }
+            
+            // Store previous values for deltas
+            const prevStability = state.stability;
+            const prevBurnout = state.burnout;
+            const prevFeatures = state.featuresCompleted;
+            const prevBugs = state.modules.reduce((sum, m) => sum + m.bugs, 0);
+            
+            // Step simulation
+            state = step(state);
+            
+            // Update UI
+            document.getElementById('week-display').textContent = state.week;
+            
+            const totalBugs = state.modules.reduce((sum, m) => sum + m.bugs, 0);
+            
+            document.getElementById('metric-stability').textContent = Math.round(state.stability) + '%';
+            document.getElementById('metric-burnout').textContent = Math.round(state.burnout) + '%';
+            document.getElementById('metric-features').textContent = state.featuresCompleted;
+            document.getElementById('metric-bugs').textContent = totalBugs;
+            
+            // Deltas
+            const stabDelta = state.stability - prevStability;
+            const burnDelta = state.burnout - prevBurnout;
+            const featDelta = state.featuresCompleted - prevFeatures;
+            const bugDelta = totalBugs - prevBugs;
+            
+            updateDelta('delta-stability', stabDelta, '%');
+            updateDelta('delta-burnout', burnDelta, '%', true); // inverse
+            updateDelta('delta-features', featDelta, '', false, true);
+            updateDelta('delta-bugs', bugDelta, '', true);
+            
+            // Update visualization
+            updateVisualization();
+            
+            // Check for failure
+            if (state.stability <= 0) {
+                document.getElementById('project-status').textContent = 'Failed';
+                document.getElementById('project-status').className = 'status-badge status-failed';
+            }
+        }
+        
+        function updateDelta(id, value, suffix, inverse = false, isFeature = false) {
+            const el = document.getElementById(id);
+            const absVal = Math.abs(value).toFixed(1);
+            
+            if (isFeature) {
+                el.textContent = value > 0 ? `+${value} this week` : 'No progress';
+                el.className = 'metric-delta ' + (value > 0 ? 'positive' : 'neutral');
+            } else {
+                const sign = value > 0 ? '+' : '';
+                el.textContent = `${sign}${absVal}${suffix}`;
+                if (inverse) {
+                    el.className = 'metric-delta ' + (value > 0 ? 'negative' : 'positive');
+                } else {
+                    el.className = 'metric-delta ' + (value > 0 ? 'positive' : 'negative');
+                }
+            }
+        }
+        
+        function resetSimulation() {
+            clearInterval(simulationInterval);
+            state.isRunning = false;
+            document.getElementById('play-btn').textContent = '▶ Start';
+            document.getElementById('project-status').textContent = 'Active';
+            document.getElementById('project-status').className = 'status-badge status-active';
+            
+            state = {
+                week: 1,
+                isRunning: false,
+                params: { ...state.params },
+                modules: MODULES.map(m => ({ ...m, bugs: 0, prevBugs: 0 })),
+                stability: 100,
+                burnout: 0,
+                featuresCompleted: 0,
+                history: [],
+                bugParticles: []
+            };
+            
+            document.getElementById('week-display').textContent = '1';
+            document.getElementById('metric-stability').textContent = '100%';
+            document.getElementById('metric-burnout').textContent = '0%';
+            document.getElementById('metric-features').textContent = '0';
+            document.getElementById('metric-bugs').textContent = '0';
+            
+            updateVisualization();
+            initTimeline();
+        }
+        
+        function endSimulation() {
+            clearInterval(simulationInterval);
+            state.isRunning = false;
+            document.getElementById('play-btn').textContent = '▶ New Run';
+            
+            showPostmortem();
+        }
+        
+        // ==========================================
+        // POST-MORTEM ANALYSIS
+        // ==========================================
+        
+        function showPostmortem() {
+            const modal = document.getElementById('postmortem-modal');
+            const success = state.stability > 50 && state.burnout < 80;
+            
+            document.getElementById('postmortem-subtitle').textContent = 
+                `Week ${state.week} - ${success ? 'Project Delivered' : 'Project Collapsed'}`;
+            
+            // Calculate damage scores
+            const totalBugs = state.modules.reduce((sum, m) => sum + m.bugs, 0);
+            const maxPossibleBugs = state.week * 20;
+            const bugDamage = Math.min(100, (totalBugs / maxPossibleBugs) * 100);
+            const burnoutDamage = state.burnout;
+            const debtDamage = state.params.techDebt;
+            const overheadDamage = state.params.meetingOverhead;
+            
+            // Animate bars
+            setTimeout(() => {
+                document.getElementById('damage-bugs').style.width = bugDamage + '%';
+                document.getElementById('damage-burnout').style.width = burnoutDamage + '%';
+                document.getElementById('damage-debt').style.width = debtDamage + '%';
+                document.getElementById('damage-overhead').style.width = overheadDamage + '%';
+            }, 100);
+            
+            // Generate insights
+            const damages = [
+                { name: 'Bug Propagation', value: bugDamage },
+                { name: 'Team Burnout', value: burnoutDamage },
+                { name: 'Tech Debt', value: debtDamage },
+                { name: 'Meeting Overhead', value: overheadDamage }
+            ];
+            damages.sort((a, b) => b.value - a.value);
+            
+            const primaryDamage = damages[0];
+            let insight = '';
+            
+            if (primaryDamage.name === 'Bug Propagation') {
+                insight = `The project suffered most from <strong>bug propagation</strong>. With ${state.params.coupling}% coupling and only ${state.params.testCoverage}% test coverage, defects spread like wildfire through module dependencies. The codebase became increasingly unstable, reaching ${Math.round(state.stability)}% stability by week ${state.week}.`;
+            } else if (primaryDamage.name === 'Team Burnout') {
+                insight = `The team experienced severe <strong>burnout</strong> at ${Math.round(state.burnout)}%. ${state.params.deadlinePressure}% deadline pressure without adequate resources led to unsustainable crunch. Productivity dropped as technical debt accumulated faster than features could be delivered.`;
+            } else if (primaryDamage.name === 'Tech Debt') {
+                insight = `<strong>Technical debt</strong> at ${state.params.techDebt}% created a compounding effect. Quick fixes and shortcuts early in the project created a fragile foundation. By the end, ${totalBugs} bugs were active across modules, making new feature development nearly impossible.`;
+            } else {
+                insight = `<strong>Meeting overhead</strong> at ${state.params.meetingOverhead}% severely constrained development time. With only ${100 - state.params.meetingOverhead}% of schedule available for coding, the team couldn't maintain velocity while managing complexity.`;
+            }
+            
+            document.getElementById('postmortem-insights').innerHTML = insight;
+            
+            // Recommendations
+            const recs = [];
+            if (state.params.coupling > 50) recs.push('Reduce module coupling through API contracts and event-driven architecture');
+            if (state.params.testCoverage < 60) recs.push('Increase test coverage to at least 60% to prevent bug propagation');
+            if (state.params.deadlinePressure > 70) recs.push('Negotiate realistic deadlines or reduce scope to prevent burnout');
+            if (state.params.meetingOverhead > 30) recs.push('Implement async communication to reduce meeting overhead below 20%');
+            if (state.params.techDebt > 50) recs.push('Allocate 20% of each sprint to debt reduction and refactoring');
+            if (state.params.teamSize < 4 && state.params.deadlinePressure > 60) recs.push('Add team members or reduce scope - current team is undersized for pressure');
+            
+            const recList = document.getElementById('postmortem-recommendations');
+            recList.innerHTML = recs.map(r => `<li>${r}</li>`).join('');
+            
+            modal.classList.add('active');
+        }
+        
+        function closePostmortem() {
+            document.getElementById('postmortem-modal').classList.remove('active');
+            resetSimulation();
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            initVisualization();
+            updateInsights();
+        });
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            initVisualization();
+            updateTimeline();
+        });
     </script>
 </body>
 </html>
