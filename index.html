@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation with D3.js</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <h1>System Dynamics Simulation</h1>
+    <div id="simulation"></div>
+    <script>
+        // Initialize the system dynamics simulation engine
+        const simulation = {}; // Placeholder for system dynamics engine
+
+        // D3.js code to create an interactive visualization
+        d3.select('#simulation')
+            .append('svg')
+            .attr('width', 800)
+            .attr('height', 600)
+            .append('circle')
+            .attr('cx', 400)
+            .attr('cy', 300)
+            .attr('r', 50)
+            .style('fill', 'blue');
+
+        // Integrate simulation with D3.js visualization
+        // Add your integration logic here
+    </script>
+</body>
+</html>
