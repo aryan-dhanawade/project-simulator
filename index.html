@@ -1,1341 +1,1781 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Software Project Simulator</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --bg-dark: #0a0a0f;
-            --bg-panel: #12121a;
-            --bg-card: #1a1a25;
-            --accent-primary: #00d4ff;
-            --accent-secondary: #ff006e;
-            --accent-warning: #ffbe0b;
-            --accent-success: #06ffa5;
-            --accent-danger: #ff4757;
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0b0;
-            --border: #2a2a3a;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        
-        /* View Transitions */
-        ::view-transition-group(*),
-        ::view-transition-old(*),
-        ::view-transition-new(*) {
-            animation-duration: 0.25s;
-            animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
-        }
-        
-        /* Header */
-        .header {
-            background: linear-gradient(180deg, var(--bg-panel) 0%, transparent 100%);
-            padding: 20px 40px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .week-indicator {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.2rem;
-            color: var(--accent-primary);
-        }
-        
-        .status-badge {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-        }
-        
-        .status-active { background: rgba(6, 255, 165, 0.15); color: var(--accent-success); border: 1px solid var(--accent-success); }
-        .status-crunch { background: rgba(255, 190, 11, 0.15); color: var(--accent-warning); border: 1px solid var(--accent-warning); }
-        .status-failed { background: rgba(255, 71, 87, 0.15); color: var(--accent-danger); border: 1px solid var(--accent-danger); }
-        
-        /* Main Layout */
-        .container {
-            display: grid;
-            grid-template-columns: 320px 1fr 320px;
-            gap: 20px;
-            padding: 20px;
-            max-width: 1920px;
-            margin: 0 auto;
-        }
-        
-        /* Panels */
-        .panel {
-            background: var(--bg-panel);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            padding: 24px;
-        }
-        
-        .panel-title {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-        
-        /* Controls Section */
-        .control-group {
-            margin-bottom: 24px;
-        }
-        
-        .control-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-        
-        .control-name {
-            color: var(--text-secondary);
-        }
-        
-        .control-value {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-primary);
-            font-weight: 700;
-        }
-        
-        /* Custom Range Slider */
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            background: var(--bg-card);
-            border-radius: 3px;
-            outline: none;
-            -webkit-appearance: none;
-            appearance: none;
-        }
-        
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            background: var(--accent-primary);
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
-            transition: transform 0.2s;
-        }
-        
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
-        
-        /* Scenario Buttons */
-        .scenario-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .scenario-btn {
-            padding: 12px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .scenario-btn:hover {
-            border-color: var(--accent-primary);
-            background: rgba(0, 212, 255, 0.1);
-        }
-        
-        .scenario-btn.active {
-            background: var(--accent-primary);
-            color: var(--bg-dark);
-            border-color: var(--accent-primary);
-        }
-        
-        /* Action Buttons */
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .btn {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-        }
-        
-        .btn-primary {
-            background: var(--accent-primary);
-            color: var(--bg-dark);
-        }
-        
-        .btn-primary:hover {
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
-        }
-        
-        .btn-secondary {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-        
-        .btn-secondary:hover {
-            border-color: var(--accent-secondary);
-            color: var(--accent-secondary);
-        }
-        
-        /* Visualization Area */
-        .viz-container {
-            position: relative;
-            min-height: 600px;
-            background: var(--bg-dark);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-        }
-        
-        #network-graph {
-            width: 100%;
-            height: 500px;
-        }
-        
-        /* Module Nodes */
-        .module-node {
-            cursor: pointer;
-        }
-        
-        .module-circle {
-            transition: all 0.3s ease;
-        }
-        
-        .module-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            fill: var(--text-primary);
-            pointer-events: none;
-            text-anchor: middle;
-        }
-        
-        .bug-particle {
-            pointer-events: none;
-        }
-        
-        /* Connection Lines */
-        .link {
-            stroke: var(--border);
-            stroke-width: 2;
-            transition: stroke 0.3s;
-        }
-        
-        .link.coupled {
-            stroke: var(--accent-warning);
-            stroke-width: 3;
-        }
-        
-        /* Metrics Display */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        
-        .metric-card {
-            background: var(--bg-card);
-            padding: 16px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-        }
-        
-        .metric-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-        
-        .metric-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-        
-        .metric-delta {
-            font-size: 0.8rem;
-            margin-top: 4px;
-        }
-        
-        .positive { color: var(--accent-success); }
-        .negative { color: var(--accent-danger); }
-        .neutral { color: var(--accent-warning); }
-        
-        /* Time Series Chart */
-        #timeline-chart {
-            width: 100%;
-            height: 150px;
-            margin-top: 20px;
-        }
-        
-        /* Post-mortem Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .modal-overlay.active {
-            display: flex;
-        }
-        
-        .modal {
-            background: var(--bg-panel);
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            padding: 40px;
-            max-width: 700px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        .modal-title {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .modal-subtitle {
-            color: var(--text-secondary);
-            margin-bottom: 30px;
-        }
-        
-        .postmortem-section {
-            margin-bottom: 24px;
-        }
-        
-        .postmortem-section h3 {
-            color: var(--accent-primary);
-            margin-bottom: 12px;
-            font-size: 1.1rem;
-        }
-        
-        .damage-bar {
-            height: 24px;
-            background: var(--bg-card);
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 8px;
-            position: relative;
-        }
-        
-        .damage-fill {
-            height: 100%;
-            border-radius: 12px;
-            transition: width 1s ease;
-        }
-        
-        .damage-label {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-        }
-        
-        /* Legend */
-        .legend {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 10px;
-            font-size: 0.8rem;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .legend-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-        
-        /* Tooltip */
-        .tooltip {
-            position: absolute;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 0.85rem;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 100;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        
-        .tooltip.show {
-            opacity: 1;
-        }
-        
-        /* Animations */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        .pulsing {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes bug-move {
-            0% { offset-distance: 0%; }
-            100% { offset-distance: 100%; }
-        }
-        
-        /* Responsive */
-        @media (max-width: 1400px) {
-            .container {
-                grid-template-columns: 280px 1fr 280px;
-            }
-        }
-        
-        @media (max-width: 1200px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-            .viz-container {
-                order: -1;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Sim — Analysis Engine</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#07090f;
+  --surface:#0d1018;
+  --card:#121620;
+  --card2:#171c26;
+  --border:#1e2433;
+  --border2:#262d3f;
+  --primary:#4fffb0;
+  --primary-dim:rgba(79,255,176,.12);
+  --danger:#ff5c6a;
+  --danger-dim:rgba(255,92,106,.12);
+  --warn:#ffb547;
+  --warn-dim:rgba(255,181,71,.12);
+  --info:#5ba3ff;
+  --info-dim:rgba(91,163,255,.12);
+  --purple:#c77dff;
+  --purple-dim:rgba(199,125,255,.12);
+  --text:#e2e8f4;
+  --muted:#5a6480;
+  --muted2:#3a4055;
+}
+
+html,body{height:100%;overflow:hidden}
+
+body{
+  font-family:'Syne',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── HEADER ── */
+.header{
+  display:flex;
+  align-items:center;
+  gap:0;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+  flex-shrink:0;
+}
+
+.logo{
+  font-weight:800;
+  font-size:.9rem;
+  letter-spacing:.08em;
+  color:var(--primary);
+  padding:0 24px;
+  border-right:1px solid var(--border);
+  height:52px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  text-transform:uppercase;
+}
+
+.logo-sq{width:10px;height:10px;background:var(--primary);border-radius:2px}
+
+.tabs{display:flex;height:52px}
+
+.tab{
+  padding:0 28px;
+  cursor:pointer;
+  font-size:.82rem;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--muted);
+  border:none;
+  background:transparent;
+  border-bottom:2px solid transparent;
+  transition:all .2s;
+  font-family:'Syne',sans-serif;
+}
+
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+.header-right{
+  margin-left:auto;
+  padding:0 20px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.badge{
+  padding:4px 10px;
+  border-radius:4px;
+  font-size:.72rem;
+  font-family:'JetBrains Mono',monospace;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.badge-idle{background:var(--card);color:var(--muted);border:1px solid var(--border)}
+.badge-run{background:var(--primary-dim);color:var(--primary);border:1px solid rgba(79,255,176,.3)}
+.badge-done{background:var(--info-dim);color:var(--info);border:1px solid rgba(91,163,255,.3)}
+
+/* ── MAIN LAYOUT ── */
+.main{flex:1;overflow:hidden;display:flex}
+
+.view{display:none;flex:1;overflow:hidden}
+.view.active{display:flex}
+
+/* ── SHARED PANEL STYLES ── */
+.sidebar{
+  width:320px;
+  flex-shrink:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  padding:20px;
+  gap:20px;
+}
+
+.content{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+
+.section-label{
+  font-size:.68rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.15em;
+  color:var(--muted);
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── CONTROLS ── */
+.ctrl{margin-bottom:14px}
+
+.ctrl-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:.82rem}
+.ctrl-name{color:var(--muted)}
+.ctrl-val{font-family:'JetBrains Mono',monospace;color:var(--primary);font-weight:700;font-size:.82rem}
+
+input[type=range]{
+  width:100%;height:3px;
+  background:var(--card2);
+  border-radius:2px;outline:none;
+  -webkit-appearance:none;appearance:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;
+  background:var(--primary);border-radius:50%;cursor:pointer;
+  box-shadow:0 0 8px rgba(79,255,176,.4);transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3)}
+
+/* range-pair: min & max for optimizer */
+.range-pair{display:flex;gap:6px;align-items:center}
+.range-pair input[type=range]{flex:1}
+.range-pair .sep{color:var(--muted);font-size:.75rem;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+
+/* ── BUTTONS ── */
+.btn{
+  width:100%;padding:12px;border:none;border-radius:8px;
+  font-weight:700;cursor:pointer;transition:all .2s;
+  font-size:.85rem;font-family:'Syne',sans-serif;
+  text-transform:uppercase;letter-spacing:.08em;
+}
+
+.btn-primary{background:var(--primary);color:#07090f}
+.btn-primary:hover{filter:brightness(1.1);box-shadow:0 4px 18px rgba(79,255,176,.25)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;filter:none;box-shadow:none}
+
+.btn-ghost{background:var(--card);color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+
+/* ── PROGRESS ── */
+.progress-wrap{margin-top:4px}
+.progress-track{height:4px;background:var(--card2);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--primary);border-radius:2px;transition:width .1s linear;width:0}
+.progress-label{font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:5px;text-align:right}
+
+/* ── STAT CARDS ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+.stat-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:14px 12px;
+}
+
+.stat-card-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:6px}
+.stat-card-val{font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;line-height:1}
+.stat-card-sub{font-size:.72rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace}
+
+/* ── CHART CARDS ── */
+.chart-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px 18px;
+  flex:1;
+}
+
+.chart-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+
+.chart-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chart-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ── HISTOGRAM BARS ── */
+.hist-wrap{display:flex;align-items:flex-end;gap:2px;height:80px}
+.hist-bar{
+  flex:1;border-radius:2px 2px 0 0;
+  background:var(--primary);opacity:.7;
+  transition:opacity .2s;
+  min-height:2px;
+  position:relative;
+  cursor:pointer;
+}
+.hist-bar:hover{opacity:1}
+.hist-bar.highlight{opacity:1;outline:1px solid var(--primary)}
+.hist-axis{display:flex;justify-content:space-between;margin-top:4px;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--muted2)}
+
+/* ── CONFIDENCE ── */
+.ci-bar{
+  height:28px;background:var(--card2);border-radius:4px;
+  position:relative;overflow:visible;margin-bottom:10px;
+}
+.ci-fill{
+  position:absolute;height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--info-dim),var(--info-dim));
+  border:1px solid rgba(91,163,255,.25);
+  transition:all .8s cubic-bezier(.4,0,.2,1);
+}
+.ci-median{
+  position:absolute;top:-3px;width:2px;height:calc(100%+6px);
+  background:var(--primary);border-radius:1px;
+  transition:left .8s cubic-bezier(.4,0,.2,1);
+}
+.ci-labels{display:flex;justify-content:space-between;font-size:.68rem;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:3px}
+
+/* ── TIMELINE OVERLAY ── */
+.timeline-legend{display:flex;gap:14px;font-size:.7rem;color:var(--muted);margin-top:6px}
+.tl-item{display:flex;align-items:center;gap:5px}
+.tl-line{width:18px;height:2px}
+
+/* ── OPTIMIZER RESULTS ── */
+.opt-result{
+  background:var(--card);
+  border:1px solid var(--primary);
+  border-radius:12px;
+  padding:18px;
+}
+
+.opt-result-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:14px;
+}
+
+.opt-score{
+  text-align:right;
+}
+
+.opt-score-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:1.8rem;
+  font-weight:700;
+  color:var(--primary);
+  line-height:1;
+}
+
+.opt-score-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:3px}
+
+.opt-params{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+
+.opt-param{
+  background:var(--card2);
+  border-radius:8px;
+  padding:10px 12px;
+}
+
+.opt-param-name{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
+.opt-param-val{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;color:var(--text)}
+.opt-param-change{font-size:.68rem;margin-top:2px}
+.up{color:var(--primary)}.down{color:var(--danger)}.same{color:var(--muted)}
+
+.opt-outcomes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+
+.outcome-chip{
+  background:var(--card2);
+  border-radius:8px;
+  padding:10px;
+  text-align:center;
+}
+
+.outcome-chip-val{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700}
+.outcome-chip-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:3px}
+
+/* ── PARETO ── */
+#pareto-svg{width:100%;height:260px}
+
+/* ── WEIGHT SLIDERS ── */
+.weight-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.weight-item{
+  background:var(--card2);
+  border-radius:8px;
+  padding:10px 12px;
+}
+
+.weight-name{font-size:.72rem;color:var(--muted);margin-bottom:4px}
+.weight-val{font-family:'JetBrains Mono',monospace;color:var(--text);font-size:.85rem;font-weight:700}
+
+/* ── GEN PROGRESS ── */
+.gen-log{
+  max-height:90px;
+  overflow-y:auto;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.68rem;
+  color:var(--muted);
+  line-height:1.6;
+  padding:8px;
+  background:var(--card2);
+  border-radius:6px;
+  margin-top:8px;
+}
+
+.gen-entry{color:var(--muted2)}
+.gen-entry.best{color:var(--primary)}
+
+/* ── BUG PROPAGATION NETWORK ── */
+.bpn-wrap{
+  position:relative;
+  width:100%;
+  height:320px;
+}
+
+#bpn-svg{width:100%;height:100%}
+
+.bpn-controls{
+  display:flex;gap:8px;align-items:center;
+  margin-bottom:10px;flex-wrap:wrap;
+}
+
+.bpn-mode-btn{
+  padding:4px 12px;
+  background:var(--card2);
+  border:1px solid var(--border2);
+  border-radius:4px;
+  color:var(--muted);
+  cursor:pointer;
+  font-size:.72rem;
+  font-family:'JetBrains Mono',monospace;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  transition:all .2s;
+}
+
+.bpn-mode-btn.active,.bpn-mode-btn:hover{
+  border-color:var(--primary);
+  color:var(--primary);
+  background:var(--primary-dim);
+}
+
+.bpn-legend{
+  display:flex;gap:14px;font-size:.68rem;
+  color:var(--muted);margin-top:8px;flex-wrap:wrap;
+}
+
+.bpn-legend-item{display:flex;align-items:center;gap:5px}
+.bpn-legend-swatch{width:10px;height:10px;border-radius:50%}
+.bpn-legend-line{width:18px;height:2px;border-radius:1px}
+
+/* heat ring around node */
+.bpn-heat-ring{pointer-events:none}
+
+/* animated spread pulse */
+@keyframes bpn-pulse{
+  0%{r:28;opacity:.6}
+  100%{r:52;opacity:0}
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── EMPTY STATE ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--muted);text-align:center}
+.empty-icon{font-size:2.5rem;opacity:.3}
+.empty-title{font-size:.9rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em}
+.empty-sub{font-size:.78rem;line-height:1.5;max-width:280px}
+
+/* ── TOOLTIP ── */
+.tip{
+  position:fixed;background:var(--card2);border:1px solid var(--border2);
+  border-radius:6px;padding:8px 12px;font-size:.75rem;
+  pointer-events:none;opacity:0;transition:opacity .1s;z-index:999;
+  font-family:'JetBrains Mono',monospace;color:var(--text);
+}
+.tip.show{opacity:1}
+</style>
 </head>
 <body>
-    <header class="header">
-        <div class="logo">◈ PROJECT_SIM</div>
-        <div class="week-indicator">Week <span id="week-display">1</span> / 52</div>
-        <div class="status-badge status-active" id="project-status">Active</div>
-    </header>
-    
-    <div class="container">
-        <!-- Left Panel: Controls -->
-        <div class="panel">
-            <div class="panel-title">⚙️ Simulation Parameters</div>
-            
-            <div class="scenario-grid">
-                <button class="scenario-btn active" onclick="loadScenario('startup')">Startup Crunch</button>
-                <button class="scenario-btn" onclick="loadScenario('enterprise')">Enterprise</button>
-                <button class="scenario-btn" onclick="loadScenario('agile')">Agile TDD</button>
-                <button class="scenario-btn" onclick="loadScenario('legacy')">Legacy Rescue</button>
-            </div>
-            
-            <div class="control-group">
-                <div class="control-label">
-                    <span class="control-name">Team Size</span>
-                    <span class="control-value" id="val-team-size">5</span>
-                </div>
-                <input type="range" id="team-size" min="1" max="20" value="5" oninput="updateParam('team-size', this.value)">
-            </div>
-            
-            <div class="control-group">
-                <div class="control-label">
-                    <span class="control-name">Deadline Pressure</span>
-                    <span class="control-value" id="val-deadline">50%</span>
-                </div>
-                <input type="range" id="deadline-pressure" min="0" max="100" value="50" oninput="updateParam('deadline-pressure', this.value)">
-            </div>
-            
-            <div class="control-group">
-                <div class="control-label">
-                    <span class="control-name">Meeting Overhead</span>
-                    <span class="control-value" id="val-meetings">20%</span>
-                </div>
-                <input type="range" id="meeting-overhead" min="0" max="60" value="20" oninput="updateParam('meeting-overhead', this.value)">
-            </div>
-            
-            <div class="control-group">
-                <div class="control-label">
-                    <span class="control-name">Test Coverage</span>
-                    <span class="control-value" id="val-testing">40%</span>
-                </div>
-                <input type="range" id="test-coverage" min="0" max="100" value="40" oninput="updateParam('test-coverage', this.value)">
-            </div>
-            
-            <div class="control-group">
-                <div class="control-label">
-                    <span class="control-name">Tech Debt</span>
-                    <span class="control-value" id="val-debt">30%</span>
-                </div>
-                <input type="range" id="tech-debt" min="0" max="100" value="30" oninput="updateParam('tech-debt', this.value)">
-            </div>
-            
-            <div class="control-group">
-                <div class="control-label">
-                    <span class="control-name">Module Coupling</span>
-                    <span class="control-value" id="val-coupling">0.5</span>
-                </div>
-                <input type="range" id="coupling" min="0" max="100" value="50" oninput="updateParam('coupling', this.value)">
-            </div>
-            
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="play-btn" onclick="toggleSimulation()">▶ Start</button>
-                <button class="btn btn-secondary" onclick="resetSimulation()">↺ Reset</button>
-            </div>
-        </div>
-        
-        <!-- Center: Visualization -->
-        <div class="viz-container">
-            <div id="network-graph"></div>
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-dot" style="background: var(--accent-success)"></div>
-                    <span>Healthy (0 bugs)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background: var(--accent-warning)"></div>
-                    <span>Warning (3-5 bugs)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background: var(--accent-danger)"></div>
-                    <span>Critical (6+ bugs)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background: var(--accent-primary)"></div>
-                    <span>Bug Particle</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Right Panel: Metrics -->
-        <div class="panel">
-            <div class="panel-title">📊 Live Metrics</div>
-            
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Code Stability</div>
-                    <div class="metric-value" id="metric-stability">85%</div>
-                    <div class="metric-delta neutral" id="delta-stability">--</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Team Burnout</div>
-                    <div class="metric-value" id="metric-burnout">12%</div>
-                    <div class="metric-delta positive" id="delta-burnout">Low</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Features Done</div>
-                    <div class="metric-value" id="metric-features">0</div>
-                    <div class="metric-delta positive" id="delta-features">+0 this week</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Total Bugs</div>
-                    <div class="metric-value" id="metric-bugs">0</div>
-                    <div class="metric-delta negative" id="delta-bugs">Watch closely</div>
-                </div>
-            </div>
-            
-            <div class="panel-title">📈 Timeline</div>
-            <div id="timeline-chart"></div>
-            
-            <div style="margin-top: 20px; padding: 16px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);">
-                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">Simulation Insights</div>
-                <div id="insights-text" style="font-size: 0.9rem; line-height: 1.5;">
-                    Adjust parameters to see how bugs propagate through module dependencies. High coupling + low testing = rapid bug spread.
-                </div>
-            </div>
-        </div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo"><div class="logo-sq"></div>Sim · Analysis</div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('mc')">⬡ Monte Carlo</button>
+    <button class="tab" onclick="switchTab('opt')">◈ Optimizer</button>
+  </div>
+  <div class="header-right">
+    <div class="badge badge-idle" id="status-badge">Idle</div>
+  </div>
+</header>
+
+<div class="main">
+
+<!-- ══════════════════════════════════════════════
+     TAB 1 — MONTE CARLO
+══════════════════════════════════════════════ -->
+<div class="view active" id="view-mc">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div>
+      <div class="section-label">Base Parameters</div>
+
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Team Size</span><span class="ctrl-val" id="mc-val-team">5</span></div>
+        <input type="range" min="1" max="20" value="5" oninput="mcParam('teamSize',+this.value,this,'mc-val-team','')">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Deadline Pressure</span><span class="ctrl-val" id="mc-val-dp">50%</span></div>
+        <input type="range" min="0" max="100" value="50" oninput="mcParam('deadlinePressure',+this.value,this,'mc-val-dp','%')">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Meeting Overhead</span><span class="ctrl-val" id="mc-val-mo">20%</span></div>
+        <input type="range" min="0" max="60" value="20" oninput="mcParam('meetingOverhead',+this.value,this,'mc-val-mo','%')">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Test Coverage</span><span class="ctrl-val" id="mc-val-tc">40%</span></div>
+        <input type="range" min="0" max="100" value="40" oninput="mcParam('testCoverage',+this.value,this,'mc-val-tc','%')">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Tech Debt</span><span class="ctrl-val" id="mc-val-td">30%</span></div>
+        <input type="range" min="0" max="100" value="30" oninput="mcParam('techDebt',+this.value,this,'mc-val-td','%')">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Module Coupling</span><span class="ctrl-val" id="mc-val-cp">50%</span></div>
+        <input type="range" min="0" max="100" value="50" oninput="mcParam('coupling',+this.value,this,'mc-val-cp','%')">
+      </div>
     </div>
-    
-    <!-- Tooltip -->
-    <div class="tooltip" id="tooltip"></div>
-    
-    <!-- Post-mortem Modal -->
-    <div class="modal-overlay" id="postmortem-modal">
-        <div class="modal">
-            <h2 class="modal-title">Project Post-Mortem</h2>
-            <p class="modal-subtitle" id="postmortem-subtitle">Week 52 - Project Complete</p>
-            
-            <div class="postmortem-section">
-                <h3>📉 Damage Analysis</h3>
-                <div class="damage-bar">
-                    <div class="damage-fill" style="background: var(--accent-danger); width: 0%" id="damage-bugs"></div>
-                    <span class="damage-label">Bug Propagation</span>
-                </div>
-                <div class="damage-bar">
-                    <div class="damage-fill" style="background: var(--accent-warning); width: 0%" id="damage-burnout"></div>
-                    <span class="damage-label">Team Burnout</span>
-                </div>
-                <div class="damage-bar">
-                    <div class="damage-fill" style="background: var(--accent-secondary); width: 0%" id="damage-debt"></div>
-                    <span class="damage-label">Tech Debt Accumulation</span>
-                </div>
-                <div class="damage-bar">
-                    <div class="damage-fill" style="background: var(--accent-primary); width: 0%" id="damage-overhead"></div>
-                    <span class="damage-label">Meeting Overhead</span>
-                </div>
-            </div>
-            
-            <div class="postmortem-section">
-                <h3>💡 Key Insights</h3>
-                <p id="postmortem-insights" style="line-height: 1.6; color: var(--text-secondary);"></p>
-            </div>
-            
-            <div class="postmortem-section">
-                <h3>🎯 What Could Have Changed</h3>
-                <ul id="postmortem-recommendations" style="color: var(--text-secondary); line-height: 1.8; margin-left: 20px;"></ul>
-            </div>
-            
-            <button class="btn btn-primary" onclick="closePostmortem()" style="width: 100%; margin-top: 20px;">Run New Simulation</button>
-        </div>
+
+    <div>
+      <div class="section-label">Simulation Settings</div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Runs</span><span class="ctrl-val" id="mc-val-runs">300</span></div>
+        <input type="range" min="50" max="1000" step="50" value="300" oninput="document.getElementById('mc-val-runs').textContent=this.value; mcSettings.runs=+this.value">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Noise (param jitter)</span><span class="ctrl-val" id="mc-val-noise">10%</span></div>
+        <input type="range" min="0" max="30" value="10" oninput="document.getElementById('mc-val-noise').textContent=this.value+'%'; mcSettings.noise=+this.value">
+      </div>
     </div>
-    
-    <script>
-        // ==========================================
-        // SIMULATION ENGINE (Pure Functions)
-        // ==========================================
-        
-        const DEFAULT_PARAMS = {
-            teamSize: 5,
-            deadlinePressure: 50,
-            meetingOverhead: 20,
-            testCoverage: 40,
-            techDebt: 30,
-            coupling: 50
-        };
-        
-        const SCENARIOS = {
-            startup: {
-                teamSize: 3,
-                deadlinePressure: 90,
-                meetingOverhead: 10,
-                testCoverage: 20,
-                techDebt: 60,
-                coupling: 70
-            },
-            enterprise: {
-                teamSize: 15,
-                deadlinePressure: 40,
-                meetingOverhead: 40,
-                testCoverage: 80,
-                techDebt: 20,
-                coupling: 30
-            },
-            agile: {
-                teamSize: 8,
-                deadlinePressure: 50,
-                meetingOverhead: 15,
-                testCoverage: 90,
-                techDebt: 15,
-                coupling: 40
-            },
-            legacy: {
-                teamSize: 6,
-                deadlinePressure: 70,
-                meetingOverhead: 25,
-                testCoverage: 30,
-                techDebt: 80,
-                coupling: 85
-            }
-        };
-        
-        // Module graph structure - weighted edges represent coupling
-        const MODULES = [
-            { id: 'auth', name: 'Auth', x: 0, y: 0, bugs: 0 },
-            { id: 'api', name: 'API Gateway', x: 0, y: 0, bugs: 0 },
-            { id: 'payments', name: 'Payments', x: 0, y: 0, bugs: 0 },
-            { id: 'database', name: 'Database', x: 0, y: 0, bugs: 0 },
-            { id: 'frontend', name: 'Frontend', x: 0, y: 0, bugs: 0 },
-            { id: 'notifications', name: 'Notifications', x: 0, y: 0, bugs: 0 },
-            { id: 'analytics', name: 'Analytics', x: 0, y: 0, bugs: 0 },
-            { id: 'search', name: 'Search', x: 0, y: 0, bugs: 0 }
-        ];
-        
-        const LINKS = [
-            { source: 'auth', target: 'api', weight: 0.9 },
-            { source: 'api', target: 'payments', weight: 0.8 },
-            { source: 'api', target: 'database', weight: 0.7 },
-            { source: 'frontend', target: 'api', weight: 0.9 },
-            { source: 'auth', target: 'notifications', weight: 0.4 },
-            { source: 'database', target: 'analytics', weight: 0.6 },
-            { source: 'database', target: 'search', weight: 0.5 },
-            { source: 'payments', target: 'notifications', weight: 0.3 },
-            { source: 'api', target: 'search', weight: 0.4 }
-        ];
-        
-        // Simulation State
-        let state = {
-            week: 1,
-            isRunning: false,
-            params: { ...DEFAULT_PARAMS },
-            modules: MODULES.map(m => ({ ...m, bugs: 0, prevBugs: 0 })),
-            stability: 100,
-            burnout: 0,
-            featuresCompleted: 0,
-            history: [],
-            bugParticles: []
-        };
-        
-        let simulationInterval = null;
-        let svg, simulation, link, node;
-        let timelineSvg;
-        
-        // Pure function: Calculate next state
-        function step(currentState) {
-            const { params, modules, week, stability, burnout, featuresCompleted } = currentState;
-            
-            // Calculate productivity
-            const effectiveTeam = params.teamSize * (1 - params.meetingOverhead / 100);
-            const pressureMultiplier = 1 + (params.deadlinePressure / 100) * 0.5;
-            const burnoutPenalty = Math.max(0, 1 - (burnout / 100) * 2);
-            const testingBonus = params.testCoverage / 100;
-            
-            const productivity = effectiveTeam * pressureMultiplier * burnoutPenalty * (0.5 + testingBonus * 0.5);
-            
-            // Bug generation and propagation
-            const newModules = modules.map(m => {
-                // New bugs based on tech debt and deadline pressure
-                const bugChance = (params.techDebt / 100) * (params.deadlinePressure / 100) * 0.3;
-                const newBugs = Math.random() < bugChance ? Math.floor(Math.random() * 2) + 1 : 0;
-                
-                // Spread from neighbors
-                let spreadBugs = 0;
-                LINKS.forEach(l => {
-                    if (l.source === m.id || l.target === m.id) {
-                        const neighborId = l.source === m.id ? l.target : l.source;
-                        const neighbor = modules.find(n => n.id === neighborId);
-                        if (neighbor && neighbor.bugs > 0) {
-                            const spreadChance = (params.coupling / 100) * l.weight * (1 - testingBonus) * 0.3;
-                            if (Math.random() < spreadChance) {
-                                spreadBugs += Math.floor(neighbor.bugs * 0.3);
-                            }
-                        }
-                    }
-                });
-                
-                // Bug fixing based on testing
-                const fixedBugs = Math.floor(Math.random() * testingBonus * 2);
-                const totalBugs = Math.max(0, Math.min(10, m.bugs + newBugs + spreadBugs - fixedBugs));
-                
-                return { ...m, prevBugs: m.bugs, bugs: totalBugs };
-            });
-            
-            // Calculate new metrics
-            const totalBugs = newModules.reduce((sum, m) => sum + m.bugs, 0);
-            const newStability = Math.max(0, 100 - (totalBugs * 5) - (params.techDebt * 0.3));
-            
-            // Burnout increases with deadline pressure and decreases with team size adequacy
-            const burnoutChange = (params.deadlinePressure / 100) * 5 - (params.teamSize > 5 ? 1 : 0);
-            const newBurnout = Math.min(100, Math.max(0, burnout + burnoutChange - (productivity * 0.1)));
-            
-            // Features completed
-            const newFeatures = Math.floor(productivity * (stability / 100));
-            
-            return {
-                ...currentState,
-                week: week + 1,
-                modules: newModules,
-                stability: newStability,
-                burnout: newBurnout,
-                featuresCompleted: featuresCompleted + newFeatures,
-                history: [...currentState.history, {
-                    week,
-                    stability: newStability,
-                    burnout: newBurnout,
-                    bugs: totalBugs,
-                    features: newFeatures
-                }]
-            };
-        }
-        
-        // ==========================================
-        // VISUALIZATION (D3.js)
-        // ==========================================
-        
-        function initVisualization() {
-            const container = document.getElementById('network-graph');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            
-            svg = d3.select('#network-graph')
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height);
-            
-            // Create force simulation
-            simulation = d3.forceSimulation(state.modules)
-                .force('link', d3.forceLink(LINKS).id(d => d.id).distance(100))
-                .force('charge', d3.forceManyBody().strength(-300))
-                .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius(40));
-            
-            // Draw links
-            link = svg.append('g')
-                .selectAll('line')
-                .data(LINKS)
-                .enter()
-                .append('line')
-                .attr('class', 'link')
-                .attr('stroke-width', d => 1 + d.weight * 3);
-            
-            // Draw nodes
-            const nodeGroup = svg.append('g')
-                .selectAll('g')
-                .data(state.modules)
-                .enter()
-                .append('g')
-                .attr('class', 'module-node')
-                .call(d3.drag()
-                    .on('start', dragstarted)
-                    .on('drag', dragged)
-                    .on('end', dragended));
-            
-            node = nodeGroup.append('circle')
-                .attr('class', 'module-circle')
-                .attr('r', 30)
-                .attr('fill', d => getNodeColor(d.bugs))
-                .attr('stroke', '#2a2a3a')
-                .attr('stroke-width', 2);
-            
-            nodeGroup.append('text')
-                .attr('class', 'module-label')
-                .attr('dy', 45)
-                .text(d => d.name);
-            
-            // Add bug count text
-            nodeGroup.append('text')
-                .attr('class', 'bug-count')
-                .attr('dy', 5)
-                .attr('text-anchor', 'middle')
-                .attr('fill', 'white')
-                .attr('font-family', 'JetBrains Mono')
-                .attr('font-size', '14px')
-                .attr('font-weight', 'bold')
-                .text(d => d.bugs);
-            
-            // Tooltip
-            nodeGroup.on('mouseover', function(event, d) {
-                const tooltip = document.getElementById('tooltip');
-                tooltip.innerHTML = `
-                    <strong>${d.name}</strong><br>
-                    Bugs: ${d.bugs}/10<br>
-                    Status: ${d.bugs === 0 ? 'Healthy' : d.bugs < 4 ? 'Warning' : 'Critical'}
-                `;
-                tooltip.classList.add('show');
-                tooltip.style.left = event.pageX + 10 + 'px';
-                tooltip.style.top = event.pageY + 10 + 'px';
-            }).on('mouseout', () => {
-                document.getElementById('tooltip').classList.remove('show');
-            });
-            
-            simulation.on('tick', () => {
-                link
-                    .attr('x1', d => d.source.x)
-                    .attr('y1', d => d.source.y)
-                    .attr('x2', d => d.target.x)
-                    .attr('y2', d => d.target.y);
-                
-                nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`);
-            });
-            
-            initTimeline();
-        }
-        
-        function getNodeColor(bugs) {
-            if (bugs === 0) return '#06ffa5';
-            if (bugs < 4) return '#ffbe0b';
-            if (bugs < 7) return '#ff006e';
-            return '#ff4757';
-        }
-        
-        function updateVisualization() {
-            // Update node colors
-            svg.selectAll('.module-circle')
-                .transition()
-                .duration(300)
-                .attr('fill', d => getNodeColor(d.bugs));
-            
-            // Update bug counts
-            svg.selectAll('.bug-count')
-                .text(d => d.bugs);
-            
-            // Animate bug particles
-            animateBugSpread();
-            
-            // Update timeline
-            updateTimeline();
-        }
-        
-        function animateBugSpread() {
-            // Create bug particles spreading along links
-            LINKS.forEach(l => {
-                const sourceNode = state.modules.find(m => m.id === l.source.id || m.id === l.source);
-                const targetNode = state.modules.find(m => m.id === l.target.id || m.id === l.target);
-                
-                if (sourceNode && targetNode && sourceNode.bugs > 0 && sourceNode.bugs > sourceNode.prevBugs) {
-                    // Create particle
-                    const particle = svg.append('circle')
-                        .attr('class', 'bug-particle')
-                        .attr('r', 4)
-                        .attr('fill', '#ff4757')
-                        .attr('cx', sourceNode.x)
-                        .attr('cy', sourceNode.y);
-                    
-                    particle.transition()
-                        .duration(1000)
-                        .ease(d3.easeLinear)
-                        .attr('cx', targetNode.x)
-                        .attr('cy', targetNode.y)
-                        .on('end', function() {
-                            d3.select(this).remove();
-                        });
-                }
-            });
-        }
-        
-        function initTimeline() {
-            const container = document.getElementById('timeline-chart');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            
-            timelineSvg = d3.select('#timeline-chart')
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height);
-        }
-        
-        function updateTimeline() {
-            if (state.history.length < 2) return;
-            
-            const container = document.getElementById('timeline-chart');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            const margin = { top: 10, right: 10, bottom: 20, left: 30 };
-            
-            timelineSvg.selectAll('*').remove();
-            
-            const x = d3.scaleLinear()
-                .domain([1, Math.max(52, state.week)])
-                .range([margin.left, width - margin.right]);
-            
-            const y = d3.scaleLinear()
-                .domain([0, 100])
-                .range([height - margin.bottom, margin.top]);
-            
-            // Stability line
-            const stabilityLine = d3.line()
-                .x(d => x(d.week))
-                .y(d => y(d.stability))
-                .curve(d3.curveMonotoneX);
-            
-            timelineSvg.append('path')
-                .datum(state.history)
-                .attr('fill', 'none')
-                .attr('stroke', '#00d4ff')
-                .attr('stroke-width', 2)
-                .attr('d', stabilityLine);
-            
-            // Burnout line
-            const burnoutLine = d3.line()
-                .x(d => x(d.week))
-                .y(d => y(d.burnout))
-                .curve(d3.curveMonotoneX);
-            
-            timelineSvg.append('path')
-                .datum(state.history)
-                .attr('fill', 'none')
-                .attr('stroke', '#ff006e')
-                .attr('stroke-width', 2)
-                .attr('stroke-dasharray', '5,5')
-                .attr('d', burnoutLine);
-            
-            // Axes
-            timelineSvg.append('g')
-                .attr('transform', `translate(0,${height - margin.bottom})`)
-                .call(d3.axisBottom(x).ticks(5).tickFormat(d => 'W' + d))
-                .attr('color', '#666');
-            
-            timelineSvg.append('g')
-                .attr('transform', `translate(${margin.left},0)`)
-                .call(d3.axisLeft(y).ticks(3))
-                .attr('color', '#666');
-        }
-        
-        // Drag functions
-        function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-        
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-        
-        function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        }
-        
-        // ==========================================
-        // UI CONTROLS
-        // ==========================================
-        
-        function updateParam(id, value) {
-            const displayId = 'val-' + id.replace('-pressure', '').replace('-overhead', '').replace('-coverage', '');
-            const display = document.getElementById(displayId);
-            
-            if (id === 'team-size') {
-                state.params.teamSize = parseInt(value);
-                if (display) display.textContent = value;
-            } else if (id === 'deadline-pressure') {
-                state.params.deadlinePressure = parseInt(value);
-                if (display) display.textContent = value + '%';
-            } else if (id === 'meeting-overhead') {
-                state.params.meetingOverhead = parseInt(value);
-                if (display) display.textContent = value + '%';
-            } else if (id === 'test-coverage') {
-                state.params.testCoverage = parseInt(value);
-                if (display) display.textContent = value + '%';
-            } else if (id === 'tech-debt') {
-                state.params.techDebt = parseInt(value);
-                if (display) display.textContent = value + '%';
-            } else if (id === 'coupling') {
-                state.params.coupling = parseInt(value);
-                if (display) display.textContent = (value / 100).toFixed(1);
-            }
-            
-            updateInsights();
-        }
-        
-        function updateInsights() {
-            const { deadlinePressure, testCoverage, techDebt, coupling, meetingOverhead } = state.params;
-            let insight = '';
-            
-            if (coupling > 70 && testCoverage < 40) {
-                insight = '⚠️ High coupling with low test coverage creates perfect conditions for bug pandemics. Bugs will spread rapidly between modules.';
-            } else if (deadlinePressure > 80 && techDebt > 60) {
-                insight = '🔥 Crunch mode with high tech debt is unsustainable. Expect exponential bug growth and team burnout.';
-            } else if (meetingOverhead > 40) {
-                insight = '📅 Excessive meetings are killing productivity. Team has less than 60% time for actual development.';
-            } else if (testCoverage > 80 && techDebt < 30) {
-                insight = '✅ Excellent practices! High testing and low debt create a resilient codebase resistant to bug propagation.';
-            } else {
-                insight = 'Adjust parameters to see how different factors affect bug propagation, team health, and project delivery.';
-            }
-            
-            document.getElementById('insights-text').textContent = insight;
-        }
-        
-        function loadScenario(name) {
-            const scenario = SCENARIOS[name];
-            if (!scenario) return;
-            
-            // Update buttons
-            document.querySelectorAll('.scenario-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // Update sliders
-            document.getElementById('team-size').value = scenario.teamSize;
-            document.getElementById('deadline-pressure').value = scenario.deadlinePressure;
-            document.getElementById('meeting-overhead').value = scenario.meetingOverhead;
-            document.getElementById('test-coverage').value = scenario.testCoverage;
-            document.getElementById('tech-debt').value = scenario.techDebt;
-            document.getElementById('coupling').value = scenario.coupling;
-            
-            // Update params
-            Object.keys(scenario).forEach(key => {
-                state.params[key] = scenario[key];
-            });
-            
-            // Update displays
-            updateParam('team-size', scenario.teamSize);
-            updateParam('deadline-pressure', scenario.deadlinePressure);
-            updateParam('meeting-overhead', scenario.meetingOverhead);
-            updateParam('test-coverage', scenario.testCoverage);
-            updateParam('tech-debt', scenario.techDebt);
-            updateParam('coupling', scenario.coupling);
-            
-            resetSimulation();
-        }
-        
-        // ==========================================
-        // SIMULATION CONTROL
-        // ==========================================
-        
-        function toggleSimulation() {
-            const btn = document.getElementById('play-btn');
-            
-            if (state.isRunning) {
-                clearInterval(simulationInterval);
-                state.isRunning = false;
-                btn.textContent = '▶ Resume';
-                document.getElementById('project-status').textContent = 'Paused';
-                document.getElementById('project-status').className = 'status-badge status-crunch';
-            } else {
-                if (state.week >= 52 || state.stability <= 0) {
-                    resetSimulation();
-                }
-                state.isRunning = true;
-                btn.textContent = '⏸ Pause';
-                document.getElementById('project-status').textContent = 'Running';
-                document.getElementById('project-status').className = 'status-badge status-active';
-                
-                simulationInterval = setInterval(() => {
-                    tick();
-                }, 800);
-            }
-        }
-        
-        function tick() {
-            if (state.week >= 52 || state.stability <= 0) {
-                endSimulation();
-                return;
-            }
-            
-            // Store previous values for deltas
-            const prevStability = state.stability;
-            const prevBurnout = state.burnout;
-            const prevFeatures = state.featuresCompleted;
-            const prevBugs = state.modules.reduce((sum, m) => sum + m.bugs, 0);
-            
-            // Step simulation
-            state = step(state);
-            
-            // Update UI
-            document.getElementById('week-display').textContent = state.week;
-            
-            const totalBugs = state.modules.reduce((sum, m) => sum + m.bugs, 0);
-            
-            document.getElementById('metric-stability').textContent = Math.round(state.stability) + '%';
-            document.getElementById('metric-burnout').textContent = Math.round(state.burnout) + '%';
-            document.getElementById('metric-features').textContent = state.featuresCompleted;
-            document.getElementById('metric-bugs').textContent = totalBugs;
-            
-            // Deltas
-            const stabDelta = state.stability - prevStability;
-            const burnDelta = state.burnout - prevBurnout;
-            const featDelta = state.featuresCompleted - prevFeatures;
-            const bugDelta = totalBugs - prevBugs;
-            
-            updateDelta('delta-stability', stabDelta, '%');
-            updateDelta('delta-burnout', burnDelta, '%', true); // inverse
-            updateDelta('delta-features', featDelta, '', false, true);
-            updateDelta('delta-bugs', bugDelta, '', true);
-            
-            // Update visualization
-            updateVisualization();
-            
-            // Check for failure
-            if (state.stability <= 0) {
-                document.getElementById('project-status').textContent = 'Failed';
-                document.getElementById('project-status').className = 'status-badge status-failed';
-            }
-        }
-        
-        function updateDelta(id, value, suffix, inverse = false, isFeature = false) {
-            const el = document.getElementById(id);
-            const absVal = Math.abs(value).toFixed(1);
-            
-            if (isFeature) {
-                el.textContent = value > 0 ? `+${value} this week` : 'No progress';
-                el.className = 'metric-delta ' + (value > 0 ? 'positive' : 'neutral');
-            } else {
-                const sign = value > 0 ? '+' : '';
-                el.textContent = `${sign}${absVal}${suffix}`;
-                if (inverse) {
-                    el.className = 'metric-delta ' + (value > 0 ? 'negative' : 'positive');
-                } else {
-                    el.className = 'metric-delta ' + (value > 0 ? 'positive' : 'negative');
-                }
-            }
-        }
-        
-        function resetSimulation() {
-            clearInterval(simulationInterval);
-            state.isRunning = false;
-            document.getElementById('play-btn').textContent = '▶ Start';
-            document.getElementById('project-status').textContent = 'Active';
-            document.getElementById('project-status').className = 'status-badge status-active';
-            
-            state = {
-                week: 1,
-                isRunning: false,
-                params: { ...state.params },
-                modules: MODULES.map(m => ({ ...m, bugs: 0, prevBugs: 0 })),
-                stability: 100,
-                burnout: 0,
-                featuresCompleted: 0,
-                history: [],
-                bugParticles: []
-            };
-            
-            document.getElementById('week-display').textContent = '1';
-            document.getElementById('metric-stability').textContent = '100%';
-            document.getElementById('metric-burnout').textContent = '0%';
-            document.getElementById('metric-features').textContent = '0';
-            document.getElementById('metric-bugs').textContent = '0';
-            
-            updateVisualization();
-            initTimeline();
-        }
-        
-        function endSimulation() {
-            clearInterval(simulationInterval);
-            state.isRunning = false;
-            document.getElementById('play-btn').textContent = '▶ New Run';
-            
-            showPostmortem();
-        }
-        
-        // ==========================================
-        // POST-MORTEM ANALYSIS
-        // ==========================================
-        
-        function showPostmortem() {
-            const modal = document.getElementById('postmortem-modal');
-            const success = state.stability > 50 && state.burnout < 80;
-            
-            document.getElementById('postmortem-subtitle').textContent = 
-                `Week ${state.week} - ${success ? 'Project Delivered' : 'Project Collapsed'}`;
-            
-            // Calculate damage scores
-            const totalBugs = state.modules.reduce((sum, m) => sum + m.bugs, 0);
-            const maxPossibleBugs = state.week * 20;
-            const bugDamage = Math.min(100, (totalBugs / maxPossibleBugs) * 100);
-            const burnoutDamage = state.burnout;
-            const debtDamage = state.params.techDebt;
-            const overheadDamage = state.params.meetingOverhead;
-            
-            // Animate bars
-            setTimeout(() => {
-                document.getElementById('damage-bugs').style.width = bugDamage + '%';
-                document.getElementById('damage-burnout').style.width = burnoutDamage + '%';
-                document.getElementById('damage-debt').style.width = debtDamage + '%';
-                document.getElementById('damage-overhead').style.width = overheadDamage + '%';
-            }, 100);
-            
-            // Generate insights
-            const damages = [
-                { name: 'Bug Propagation', value: bugDamage },
-                { name: 'Team Burnout', value: burnoutDamage },
-                { name: 'Tech Debt', value: debtDamage },
-                { name: 'Meeting Overhead', value: overheadDamage }
-            ];
-            damages.sort((a, b) => b.value - a.value);
-            
-            const primaryDamage = damages[0];
-            let insight = '';
-            
-            if (primaryDamage.name === 'Bug Propagation') {
-                insight = `The project suffered most from <strong>bug propagation</strong>. With ${state.params.coupling}% coupling and only ${state.params.testCoverage}% test coverage, defects spread like wildfire through module dependencies. The codebase became increasingly unstable, reaching ${Math.round(state.stability)}% stability by week ${state.week}.`;
-            } else if (primaryDamage.name === 'Team Burnout') {
-                insight = `The team experienced severe <strong>burnout</strong> at ${Math.round(state.burnout)}%. ${state.params.deadlinePressure}% deadline pressure without adequate resources led to unsustainable crunch. Productivity dropped as technical debt accumulated faster than features could be delivered.`;
-            } else if (primaryDamage.name === 'Tech Debt') {
-                insight = `<strong>Technical debt</strong> at ${state.params.techDebt}% created a compounding effect. Quick fixes and shortcuts early in the project created a fragile foundation. By the end, ${totalBugs} bugs were active across modules, making new feature development nearly impossible.`;
-            } else {
-                insight = `<strong>Meeting overhead</strong> at ${state.params.meetingOverhead}% severely constrained development time. With only ${100 - state.params.meetingOverhead}% of schedule available for coding, the team couldn't maintain velocity while managing complexity.`;
-            }
-            
-            document.getElementById('postmortem-insights').innerHTML = insight;
-            
-            // Recommendations
-            const recs = [];
-            if (state.params.coupling > 50) recs.push('Reduce module coupling through API contracts and event-driven architecture');
-            if (state.params.testCoverage < 60) recs.push('Increase test coverage to at least 60% to prevent bug propagation');
-            if (state.params.deadlinePressure > 70) recs.push('Negotiate realistic deadlines or reduce scope to prevent burnout');
-            if (state.params.meetingOverhead > 30) recs.push('Implement async communication to reduce meeting overhead below 20%');
-            if (state.params.techDebt > 50) recs.push('Allocate 20% of each sprint to debt reduction and refactoring');
-            if (state.params.teamSize < 4 && state.params.deadlinePressure > 60) recs.push('Add team members or reduce scope - current team is undersized for pressure');
-            
-            const recList = document.getElementById('postmortem-recommendations');
-            recList.innerHTML = recs.map(r => `<li>${r}</li>`).join('');
-            
-            modal.classList.add('active');
-        }
-        
-        function closePostmortem() {
-            document.getElementById('postmortem-modal').classList.remove('active');
-            resetSimulation();
-        }
-        
-        // ==========================================
-        // INITIALIZATION
-        // ==========================================
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            initVisualization();
-            updateInsights();
-        });
-        
-        // Handle resize
-        window.addEventListener('resize', () => {
-            initVisualization();
-            updateTimeline();
-        });
-    </script>
+
+    <div>
+      <button class="btn btn-primary" id="mc-run-btn" onclick="runMonteCarlo()">▶ Run Simulation</button>
+      <div class="progress-wrap" id="mc-progress-wrap" style="display:none;margin-top:10px">
+        <div class="progress-track"><div class="progress-fill" id="mc-progress-fill"></div></div>
+        <div class="progress-label" id="mc-progress-label">0 / 0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="mc-content">
+    <div class="empty" id="mc-empty">
+      <div class="empty-icon">⬡</div>
+      <div class="empty-title">No runs yet</div>
+      <div class="empty-sub">Set parameters, choose how many runs, and press Run Simulation. Results appear here instantly.</div>
+    </div>
+
+    <div id="mc-results" style="display:none;display:flex;flex-direction:column;gap:14px">
+
+      <!-- Summary stat row -->
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-card-label">Success Rate</div>
+          <div class="stat-card-val" id="mc-success-rate" style="color:var(--primary)">—</div>
+          <div class="stat-card-sub" id="mc-success-sub">stability &gt; 30%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Med. Stability</div>
+          <div class="stat-card-val" id="mc-med-stab">—</div>
+          <div class="stat-card-sub" id="mc-stab-ci">CI —</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Med. Features</div>
+          <div class="stat-card-val" id="mc-med-feat">—</div>
+          <div class="stat-card-sub" id="mc-feat-ci">CI —</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Med. Burnout</div>
+          <div class="stat-card-val" id="mc-med-burn">—</div>
+          <div class="stat-card-sub" id="mc-burn-ci">CI —</div>
+        </div>
+      </div>
+
+      <!-- Histograms -->
+      <div class="chart-grid-2">
+        <div class="chart-card">
+          <div class="chart-title">Stability Distribution <span id="mc-stab-runs" style="font-family:'JetBrains Mono',monospace"></span></div>
+          <div class="hist-wrap" id="hist-stability"></div>
+          <div class="hist-axis" id="hist-stability-axis"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Burnout Distribution <span id="mc-burn-runs" style="font-family:'JetBrains Mono',monospace"></span></div>
+          <div class="hist-wrap" id="hist-burnout"></div>
+          <div class="hist-axis" id="hist-burnout-axis"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Features Shipped Distribution</div>
+          <div class="hist-wrap" id="hist-features"></div>
+          <div class="hist-axis" id="hist-features-axis"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Total Bugs Distribution</div>
+          <div class="hist-wrap" id="hist-bugs"></div>
+          <div class="hist-axis" id="hist-bugs-axis"></div>
+        </div>
+      </div>
+
+      <!-- Confidence Intervals -->
+      <div class="chart-card">
+        <div class="chart-title">95% Confidence Intervals</div>
+        <div id="ci-rows"></div>
+      </div>
+
+      <!-- Timeline overlay -->
+      <div class="chart-card">
+        <div class="chart-title">Stability Trajectory — Best / Median / Worst</div>
+        <svg id="mc-timeline-svg" style="width:100%;height:200px"></svg>
+        <div class="timeline-legend">
+          <div class="tl-item"><div class="tl-line" style="background:var(--primary)"></div>Best</div>
+          <div class="tl-item"><div class="tl-line" style="background:var(--info)"></div>Median</div>
+          <div class="tl-item"><div class="tl-line" style="background:var(--danger);height:1px"></div>Worst</div>
+          <div class="tl-item"><div class="tl-line" style="background:rgba(91,163,255,.15);height:8px;border-radius:2px"></div>10–90% band</div>
+        </div>
+      </div>
+
+      <!-- ═══ BUG PROPAGATION NETWORK ═══ -->
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:10px">
+          Bug Propagation Network
+          <span id="bpn-run-label" style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted)"></span>
+        </div>
+
+        <!-- View-mode switcher -->
+        <div class="bpn-controls">
+          <span style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">View:</span>
+          <button class="bpn-mode-btn active" id="bpn-btn-median" onclick="setBpnMode('median')">Median bugs</button>
+          <button class="bpn-mode-btn" id="bpn-btn-p90"    onclick="setBpnMode('p90')">90th-pct bugs</button>
+          <button class="bpn-mode-btn" id="bpn-btn-spread" onclick="setBpnMode('spread')">Spread risk</button>
+          <button class="bpn-mode-btn" id="bpn-btn-worst"  onclick="setBpnMode('worst')">Worst-run state</button>
+          <span id="bpn-week-wrap" style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--muted)">
+            Week: <span id="bpn-week-val" style="font-family:'JetBrains Mono',monospace;color:var(--primary);font-weight:700">52</span>
+            <input type="range" id="bpn-week-slider" min="1" max="52" value="52"
+              style="width:90px" oninput="onBpnWeekSlide(+this.value)">
+          </span>
+        </div>
+
+        <div class="bpn-wrap">
+          <svg id="bpn-svg"></svg>
+        </div>
+
+        <div class="bpn-legend">
+          <div class="bpn-legend-item">
+            <div class="bpn-legend-swatch" style="background:#4fffb0"></div>
+            Healthy (0 bugs)
+          </div>
+          <div class="bpn-legend-item">
+            <div class="bpn-legend-swatch" style="background:#ffb547"></div>
+            Warning (1–4)
+          </div>
+          <div class="bpn-legend-item">
+            <div class="bpn-legend-swatch" style="background:#ff5c6a"></div>
+            Critical (5+)
+          </div>
+          <div class="bpn-legend-item">
+            <div class="bpn-legend-line" style="background:#ffb547;opacity:.8"></div>
+            Active spread link
+          </div>
+          <div class="bpn-legend-item">
+            <div class="bpn-legend-line" style="background:var(--border2)"></div>
+            Dormant link
+          </div>
+          <div style="margin-left:auto;font-size:.68rem;color:var(--muted2)">
+            Node size = degree centrality · Ring opacity = bug load · Link width = coupling weight
+          </div>
+        </div>
+      </div>
+      <!-- ═══ /BUG PROPAGATION NETWORK ═══ -->
+
+    </div>
+  </div>
+</div><!-- /view-mc -->
+
+
+<!-- ══════════════════════════════════════════════
+     TAB 2 — OPTIMIZER
+══════════════════════════════════════════════ -->
+<div class="view" id="view-opt">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div>
+      <div class="section-label">Objective Weights</div>
+      <div class="weight-grid">
+        <div class="weight-item">
+          <div class="weight-name">Stability</div>
+          <div class="weight-val" id="w-stab-val">40%</div>
+          <input type="range" min="0" max="100" value="40" style="margin-top:4px" oninput="setWeight('stability',+this.value,this)">
+        </div>
+        <div class="weight-item">
+          <div class="weight-name">Features</div>
+          <div class="weight-val" id="w-feat-val">25%</div>
+          <input type="range" min="0" max="100" value="25" style="margin-top:4px" oninput="setWeight('features',+this.value,this)">
+        </div>
+        <div class="weight-item">
+          <div class="weight-name">−Burnout</div>
+          <div class="weight-val" id="w-burn-val">20%</div>
+          <input type="range" min="0" max="100" value="20" style="margin-top:4px" oninput="setWeight('burnout',+this.value,this)">
+        </div>
+        <div class="weight-item">
+          <div class="weight-name">−Bugs</div>
+          <div class="weight-val" id="w-bugs-val">15%</div>
+          <input type="range" min="0" max="100" value="15" style="margin-top:4px" oninput="setWeight('bugs',+this.value,this)">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Parameter Search Space</div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Team Size</span><span class="ctrl-val" id="opt-range-team">1 – 20</span></div>
+        <div class="range-pair">
+          <input type="range" min="1" max="20" value="1" oninput="setRange('teamSize',0,+this.value)">
+          <span class="sep">to</span>
+          <input type="range" min="1" max="20" value="20" oninput="setRange('teamSize',1,+this.value)">
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Deadline Pressure</span><span class="ctrl-val" id="opt-range-dp">0 – 100%</span></div>
+        <div class="range-pair">
+          <input type="range" min="0" max="100" value="0" oninput="setRange('deadlinePressure',0,+this.value)">
+          <span class="sep">to</span>
+          <input type="range" min="0" max="100" value="100" oninput="setRange('deadlinePressure',1,+this.value)">
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Meeting Overhead</span><span class="ctrl-val" id="opt-range-mo">0 – 60%</span></div>
+        <div class="range-pair">
+          <input type="range" min="0" max="60" value="0" oninput="setRange('meetingOverhead',0,+this.value)">
+          <span class="sep">to</span>
+          <input type="range" min="0" max="60" value="60" oninput="setRange('meetingOverhead',1,+this.value)">
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Test Coverage</span><span class="ctrl-val" id="opt-range-tc">0 – 100%</span></div>
+        <div class="range-pair">
+          <input type="range" min="0" max="100" value="0" oninput="setRange('testCoverage',0,+this.value)">
+          <span class="sep">to</span>
+          <input type="range" min="0" max="100" value="100" oninput="setRange('testCoverage',1,+this.value)">
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Tech Debt</span><span class="ctrl-val" id="opt-range-td">0 – 100%</span></div>
+        <div class="range-pair">
+          <input type="range" min="0" max="100" value="0" oninput="setRange('techDebt',0,+this.value)">
+          <span class="sep">to</span>
+          <input type="range" min="0" max="100" value="100" oninput="setRange('techDebt',1,+this.value)">
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Module Coupling</span><span class="ctrl-val" id="opt-range-cp">0 – 100%</span></div>
+        <div class="range-pair">
+          <input type="range" min="0" max="100" value="0" oninput="setRange('coupling',0,+this.value)">
+          <span class="sep">to</span>
+          <input type="range" min="0" max="100" value="100" oninput="setRange('coupling',1,+this.value)">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">GA Settings</div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Population</span><span class="ctrl-val" id="ga-pop-val">80</span></div>
+        <input type="range" min="20" max="200" step="10" value="80" oninput="document.getElementById('ga-pop-val').textContent=this.value;gaSettings.popSize=+this.value">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-header"><span class="ctrl-name">Generations</span><span class="ctrl-val" id="ga-gen-val">40</span></div>
+        <input type="range" min="10" max="100" step="5" value="40" oninput="document.getElementById('ga-gen-val').textContent=this.value;gaSettings.generations=+this.value">
+      </div>
+    </div>
+
+    <div>
+      <button class="btn btn-primary" id="opt-run-btn" onclick="runOptimizer()">◈ Find Optimal Config</button>
+      <div class="progress-wrap" id="opt-progress-wrap" style="display:none;margin-top:10px">
+        <div class="progress-track"><div class="progress-fill" id="opt-progress-fill"></div></div>
+        <div class="progress-label" id="opt-progress-label">Gen 0 / 0</div>
+      </div>
+      <div class="gen-log" id="gen-log" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="opt-content">
+    <div class="empty" id="opt-empty">
+      <div class="empty-icon">◈</div>
+      <div class="empty-title">Configure & Optimize</div>
+      <div class="empty-sub">Set objective weights and constrain the search space, then run the genetic algorithm to discover the best parameter combination.</div>
+    </div>
+
+    <div id="opt-results" style="display:none;flex-direction:column;gap:14px">
+
+      <!-- Best result card -->
+      <div class="opt-result" id="opt-best-card">
+        <div class="opt-result-header">
+          <div>
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--primary);margin-bottom:4px">Optimal Configuration Found</div>
+            <div style="font-size:1rem;font-weight:700" id="opt-headline">—</div>
+          </div>
+          <div class="opt-score">
+            <div class="opt-score-val" id="opt-score-val">—</div>
+            <div class="opt-score-label">Fitness Score</div>
+          </div>
+        </div>
+
+        <div class="opt-params" id="opt-params-grid"></div>
+
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">Predicted Outcomes (Monte Carlo median, 100 runs)</div>
+        <div class="opt-outcomes" id="opt-outcomes-grid"></div>
+      </div>
+
+      <!-- Pareto frontier -->
+      <div class="chart-card">
+        <div class="chart-title">Pareto Frontier — Stability vs. Features (bubble = fitness score)<span id="pareto-count" style="font-family:'JetBrains Mono',monospace;font-size:.7rem"></span></div>
+        <svg id="pareto-svg"></svg>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:6px">Each point is a non-dominated solution — you can't improve one metric without degrading another. Larger = higher composite score.</div>
+      </div>
+
+      <!-- Generation convergence chart -->
+      <div class="chart-card">
+        <div class="chart-title">Fitness Convergence Over Generations</div>
+        <svg id="conv-svg" style="width:100%;height:160px"></svg>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /view-opt -->
+
+</div><!-- /main -->
+
+<div class="tip" id="tip"></div>
+
+<script>
+// ================================================================
+// SIMULATION ENGINE (same core as main simulator)
+// ================================================================
+const MODULES = ['auth','api','payments','database','frontend','notifications','analytics','search'];
+const LINKS = [
+  {s:'auth',t:'api',w:.9},{s:'api',t:'payments',w:.8},{s:'api',t:'database',w:.7},
+  {s:'frontend',t:'api',w:.9},{s:'auth',t:'notifications',w:.4},{s:'database',t:'analytics',w:.6},
+  {s:'database',t:'search',w:.5},{s:'payments',t:'notifications',w:.3},{s:'api',t:'search',w:.4}
+];
+
+function runSim(params) {
+  let bugs = {}; MODULES.forEach(m => bugs[m] = 0);
+  let stability = 100, burnout = 0, features = 0;
+  const tb = params.testCoverage / 100;
+
+  for (let w = 0; w < 52; w++) {
+    if (stability <= 0) break;
+
+    // New bugs
+    const bc = (params.techDebt/100) * (params.deadlinePressure/100) * 0.3;
+    const newBugs = {};
+    MODULES.forEach(m => {
+      newBugs[m] = Math.random() < bc ? Math.floor(Math.random()*2)+1 : 0;
+    });
+
+    // Spread
+    LINKS.forEach(l => {
+      const spread = (params.coupling/100) * l.w * (1-tb) * 0.3;
+      if (bugs[l.s] > 0 && Math.random() < spread) newBugs[l.t] += Math.max(1, Math.floor(bugs[l.s]*0.3));
+      if (bugs[l.t] > 0 && Math.random() < spread) newBugs[l.s] += Math.max(1, Math.floor(bugs[l.t]*0.3));
+    });
+
+    // Fix
+    const fixCap = tb * (params.teamSize/10);
+    MODULES.forEach(m => {
+      const fixed = Math.floor(Math.random() * fixCap * 2);
+      bugs[m] = Math.max(0, Math.min(10, bugs[m] + newBugs[m] - fixed));
+    });
+
+    const totalBugs = MODULES.reduce((s,m) => s + bugs[m], 0);
+    stability = Math.max(0, 100 - totalBugs*5 - params.techDebt*0.3);
+
+    const effTeam = params.teamSize * (1 - params.meetingOverhead/100);
+    const pressure = 1 + (params.deadlinePressure/100)*0.5;
+    const bp = Math.max(0, 1 - (burnout/100)*2);
+    const prod = effTeam * pressure * bp * (0.5 + tb*0.5);
+
+    const prodTeam = params.teamSize * (1 - params.meetingOverhead/100);
+    const bInc = (params.deadlinePressure/100)*5;
+    const bRec = Math.max(0, (prodTeam-3)*0.3) + prod*0.05;
+    burnout = Math.min(100, Math.max(0, burnout + bInc - bRec));
+
+    features += Math.max(0, Math.floor(prod * (stability/100)));
+  }
+
+  const totalBugs = MODULES.reduce((s,m) => s + bugs[m], 0);
+  return { stability, burnout, features, bugs: totalBugs };
+}
+
+// Run sim and record week-by-week stability history + per-module bug snapshot
+function runSimFull(params) {
+  let bugMap = {}; MODULES.forEach(m => bugMap[m] = 0);
+  let stability = 100, burnout = 0, features = 0;
+  const tb = params.testCoverage / 100;
+  const history = [];
+  // NEW: per-week per-module bug snapshot for propagation viz
+  const moduleBugHistory = []; // [{week, bugs:{moduleId: count}}]
+
+  for (let w = 0; w < 52; w++) {
+    if (stability <= 0) {
+      history.push({week:w+1,stability:0});
+      moduleBugHistory.push({week:w+1, bugs:{...bugMap}});
+      continue;
+    }
+    const bc = (params.techDebt/100)*(params.deadlinePressure/100)*0.3;
+    const newB = {}; MODULES.forEach(m => { newB[m] = Math.random()<bc ? Math.floor(Math.random()*2)+1:0; });
+    LINKS.forEach(l => {
+      const sp=(params.coupling/100)*l.w*(1-tb)*0.3;
+      if(bugMap[l.s]>0 && Math.random()<sp) newB[l.t]+=Math.max(1,Math.floor(bugMap[l.s]*0.3));
+      if(bugMap[l.t]>0 && Math.random()<sp) newB[l.s]+=Math.max(1,Math.floor(bugMap[l.t]*0.3));
+    });
+    const fixCap=tb*(params.teamSize/10);
+    MODULES.forEach(m => { const f=Math.floor(Math.random()*fixCap*2); bugMap[m]=Math.max(0,Math.min(10,bugMap[m]+newB[m]-f)); });
+    const tot=MODULES.reduce((s,m)=>s+bugMap[m],0);
+    stability=Math.max(0,100-tot*5-params.techDebt*0.3);
+    const eff=params.teamSize*(1-params.meetingOverhead/100);
+    const pr=1+(params.deadlinePressure/100)*0.5;
+    const bp=Math.max(0,1-(burnout/100)*2);
+    const prod=eff*pr*bp*(0.5+tb*0.5);
+    const bInc=(params.deadlinePressure/100)*5;
+    const bRec=Math.max(0,(params.teamSize*(1-params.meetingOverhead/100)-3)*0.3)+prod*0.05;
+    burnout=Math.min(100,Math.max(0,burnout+bInc-bRec));
+    features+=Math.max(0,Math.floor(prod*(stability/100)));
+    history.push({week:w+1,stability});
+    moduleBugHistory.push({week:w+1, bugs:{...bugMap}});
+  }
+  const totalBugs=MODULES.reduce((s,m)=>s+bugMap[m],0);
+  return {stability,burnout,features,bugs:totalBugs,history,moduleBugHistory};
+}
+
+// ================================================================
+// STATS HELPERS
+// ================================================================
+function median(arr) {
+  const s=[...arr].sort((a,b)=>a-b);
+  const m=Math.floor(s.length/2);
+  return s.length%2===0 ? (s[m-1]+s[m])/2 : s[m];
+}
+function percentile(arr,p) {
+  const s=[...arr].sort((a,b)=>a-b);
+  const i=(p/100)*(s.length-1);
+  const lo=Math.floor(i), hi=Math.ceil(i);
+  return s[lo]+(s[hi]-s[lo])*(i-lo);
+}
+function mean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+
+// ================================================================
+// MONTE CARLO STATE
+// ================================================================
+let mcParams = {teamSize:5,deadlinePressure:50,meetingOverhead:20,testCoverage:40,techDebt:30,coupling:50};
+let mcSettings = {runs:300, noise:10};
+
+function mcParam(key, val, el, labelId, suffix) {
+  mcParams[key] = val;
+  document.getElementById(labelId).textContent = val + suffix;
+}
+
+function jitter(val, noise, min, max) {
+  const delta = (Math.random()*2-1) * noise;
+  return Math.max(min, Math.min(max, val + delta));
+}
+
+function runMonteCarlo() {
+  const btn = document.getElementById('mc-run-btn');
+  btn.disabled = true;
+  setStatus('run','Running…');
+  document.getElementById('mc-progress-wrap').style.display = 'block';
+  document.getElementById('mc-empty').style.display = 'none';
+  document.getElementById('mc-results').style.display = 'flex';
+
+  const n = mcSettings.runs;
+  const noise = mcSettings.noise;
+  const results = [];
+  const fullRuns = []; // store full history for a sample
+
+  let i = 0;
+  const BATCH = 20;
+
+  function runBatch() {
+    const end = Math.min(i + BATCH, n);
+    for (; i < end; i++) {
+      const p = {
+        teamSize:         Math.round(jitter(mcParams.teamSize, noise*0.2, 1, 20)),
+        deadlinePressure: Math.round(jitter(mcParams.deadlinePressure, noise, 0, 100)),
+        meetingOverhead:  Math.round(jitter(mcParams.meetingOverhead, noise*0.6, 0, 60)),
+        testCoverage:     Math.round(jitter(mcParams.testCoverage, noise, 0, 100)),
+        techDebt:         Math.round(jitter(mcParams.techDebt, noise, 0, 100)),
+        coupling:         Math.round(jitter(mcParams.coupling, noise, 0, 100))
+      };
+      const r = runSim(p);
+      results.push(r);
+      // collect a few full runs for the timeline
+      if (fullRuns.length < 100) fullRuns.push(runSimFull(p));
+    }
+    const pct = i/n*100;
+    document.getElementById('mc-progress-fill').style.width = pct+'%';
+    document.getElementById('mc-progress-label').textContent = `${i} / ${n} runs`;
+
+    if (i < n) { requestAnimationFrame(runBatch); }
+    else { finalizeMC(results, fullRuns); }
+  }
+  requestAnimationFrame(runBatch);
+}
+
+function finalizeMC(results, fullRuns) {
+  const stabs  = results.map(r=>r.stability);
+  const burns  = results.map(r=>r.burnout);
+  const feats  = results.map(r=>r.features);
+  const bugs   = results.map(r=>r.bugs);
+  const n = results.length;
+
+  const successRate = (results.filter(r=>r.stability>30 && r.burnout<90).length / n * 100).toFixed(1);
+
+  document.getElementById('mc-success-rate').textContent = successRate + '%';
+  document.getElementById('mc-success-rate').style.color = successRate>=70 ? 'var(--primary)' : successRate>=40 ? 'var(--warn)' : 'var(--danger)';
+
+  // Medians
+  const mStab = median(stabs).toFixed(1);
+  const mFeat = Math.round(median(feats));
+  const mBurn = median(burns).toFixed(1);
+  document.getElementById('mc-med-stab').textContent = mStab+'%';
+  document.getElementById('mc-med-feat').textContent = mFeat;
+  document.getElementById('mc-med-burn').textContent = mBurn+'%';
+
+  // CI labels
+  const ci90Stab = [percentile(stabs,5).toFixed(1), percentile(stabs,95).toFixed(1)];
+  const ci90Feat = [Math.round(percentile(feats,5)), Math.round(percentile(feats,95))];
+  const ci90Burn = [percentile(burns,5).toFixed(1), percentile(burns,95).toFixed(1)];
+  document.getElementById('mc-stab-ci').textContent = `90% CI: ${ci90Stab[0]}–${ci90Stab[1]}%`;
+  document.getElementById('mc-feat-ci').textContent = `90% CI: ${ci90Feat[0]}–${ci90Feat[1]}`;
+  document.getElementById('mc-burn-ci').textContent = `90% CI: ${ci90Burn[0]}–${ci90Burn[1]}%`;
+
+  // Histograms
+  drawHistogram('hist-stability','hist-stability-axis', stabs, 0, 100, 'var(--primary)', '%');
+  drawHistogram('hist-burnout','hist-burnout-axis', burns, 0, 100, 'var(--danger)', '%');
+  drawHistogram('hist-features','hist-features-axis', feats, Math.min(...feats), Math.max(...feats), 'var(--info)', '');
+  drawHistogram('hist-bugs','hist-bugs-axis', bugs, 0, Math.max(...bugs), 'var(--warn)', '');
+
+  // CI bars
+  drawCISection([
+    {label:'Code Stability',    arr:stabs, color:'var(--primary)',  suffix:'%', invert:false},
+    {label:'Team Burnout',      arr:burns, color:'var(--danger)',   suffix:'%', invert:true},
+    {label:'Features Shipped',  arr:feats, color:'var(--info)',     suffix:'',  invert:false, scale:Math.max(...feats)},
+    {label:'Total Bugs',        arr:bugs,  color:'var(--warn)',     suffix:'',  invert:true,  scale:Math.max(...bugs)||1}
+  ]);
+
+  // Timeline overlay
+  drawTimelineOverlay(fullRuns);
+
+  // Bug Propagation Network — new, additive only
+  initBugPropagationNetwork(fullRuns, mcParams);
+
+  document.getElementById('mc-progress-wrap').style.display = 'none';
+  document.getElementById('mc-run-btn').disabled = false;
+  setStatus('done','Done — '+n+' runs');
+}
+
+// ================================================================
+// BUG PROPAGATION NETWORK — Visualization Layer only
+// Reads: fullRuns[].moduleBugHistory, MODULES, LINKS, mcParams
+// Writes: #bpn-svg only. No engine state touched.
+// ================================================================
+
+// Module metadata for degree-centrality sizing
+const MODULE_META = {
+  auth:          { name:'Auth'          },
+  api:           { name:'API Gateway'   },
+  payments:      { name:'Payments'      },
+  database:      { name:'Database'      },
+  frontend:      { name:'Frontend'      },
+  notifications: { name:'Notifications' },
+  analytics:     { name:'Analytics'     },
+  search:        { name:'Search'        }
+};
+
+// BPN state — purely local to this viz, no shared state mutation
+let _bpn = {
+  mode:     'median',   // median | p90 | spread | worst
+  week:     52,
+  fullRuns: [],
+  params:   {},
+  force:    null,
+  nodes:    [],
+  links:    []
+};
+
+// Precomputed per-module statistics across all MC runs (built once, reused on mode/week change)
+let _bpnStats = null;
+
+function initBugPropagationNetwork(fullRuns, params) {
+  _bpn.fullRuns = fullRuns;
+  _bpn.params   = params;
+  _bpn.week     = 52;
+  _bpn.mode     = 'median';
+
+  // Reset week slider
+  document.getElementById('bpn-week-slider').value = 52;
+  document.getElementById('bpn-week-val').textContent = 52;
+  document.getElementById('bpn-run-label').textContent =
+    `(${fullRuns.length} runs · ${params.coupling}% coupling · ${params.testCoverage}% coverage)`;
+
+  // Precompute cross-run statistics per module per week
+  _bpnStats = precomputeBpnStats(fullRuns);
+
+  // Build D3 graph structure (stable — force layout only runs once)
+  _bpn.nodes = MODULES.map(id => {
+    const degree = LINKS.filter(l => l.s === id || l.t === id).length;
+    return { id, name: MODULE_META[id].name, degree };
+  });
+
+  // Deep-copy links so D3 force doesn't mutate the global LINKS array
+  _bpn.links = LINKS.map(l => ({ ...l, source: l.s, target: l.t }));
+
+  _renderBpnGraph();
+}
+
+// Compute per-module per-week arrays across all runs for fast percentile access
+function precomputeBpnStats(fullRuns) {
+  // stats[moduleId][weekIndex] = sorted array of bug counts across runs
+  const stats = {};
+  MODULES.forEach(id => {
+    stats[id] = Array.from({length: 52}, () => []);
+  });
+
+  fullRuns.forEach(run => {
+    run.moduleBugHistory.forEach((snap, wi) => {
+      MODULES.forEach(id => {
+        stats[id][wi].push(snap.bugs[id] ?? 0);
+      });
+    });
+  });
+
+  // Sort each array once for O(1) percentile lookup
+  MODULES.forEach(id => {
+    stats[id].forEach(arr => arr.sort((a, b) => a - b));
+  });
+
+  return stats;
+}
+
+// Fast percentile on pre-sorted array
+function pctSorted(sorted, p) {
+  if (!sorted.length) return 0;
+  const i = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
+
+// Derive per-module bug value for current mode+week
+function getBpnNodeValue(id) {
+  const wi = _bpn.week - 1; // 0-indexed
+  const sorted = _bpnStats[id][wi];
+
+  switch (_bpn.mode) {
+    case 'median':  return pctSorted(sorted, 50);
+    case 'p90':     return pctSorted(sorted, 90);
+    case 'spread': {
+      // Spread-risk = expected incoming bug pressure via coupling
+      // = Σ(neighbour median bugs × link weight) × (coupling/100) × (1-testCoverage/100)
+      const spreadFactor = (_bpn.params.coupling / 100) * (1 - _bpn.params.testCoverage / 100);
+      let risk = 0;
+      LINKS.forEach(l => {
+        const neighbourId = l.s === id ? l.t : l.t === id ? l.s : null;
+        if (!neighbourId) return;
+        const neighbourBugs = pctSorted(_bpnStats[neighbourId][wi], 50);
+        risk += neighbourBugs * l.w * spreadFactor;
+      });
+      return risk; // unbounded, scaled by caller
+    }
+    case 'worst': {
+      // Bug count in the worst-stability run at this week
+      if (!_bpn.fullRuns.length) return 0;
+      const worstRun = _bpn.fullRuns.reduce((a, b) => a.stability < b.stability ? a : b);
+      return worstRun.moduleBugHistory[wi]?.bugs[id] ?? 0;
+    }
+    default: return 0;
+  }
+}
+
+// Derive spread-risk for a link (used for edge color/width)
+function getLinkSpreadActivity(link, wi) {
+  const srcBugs = pctSorted(_bpnStats[link.s][wi], 50);
+  const tgtBugs = pctSorted(_bpnStats[link.t][wi], 50);
+  // A link is "active" when both endpoints have bugs — probability of spread event
+  const spreadChance = (_bpn.params.coupling / 100) * link.w *
+    (1 - _bpn.params.testCoverage / 100);
+  return (srcBugs > 0 || tgtBugs > 0) ? spreadChance * Math.max(srcBugs, tgtBugs) : 0;
+}
+
+// Map bug count → colour (matches main simulator palette)
+function bugCountToColor(val, maxVal) {
+  if (maxVal <= 0 || val <= 0) return '#4fffb0';           // healthy green
+  const t = Math.min(1, val / Math.max(maxVal, 1));
+  if (t < 0.3)  return '#4fffb0';  // green
+  if (t < 0.55) return '#ffb547';  // amber
+  if (t < 0.8)  return '#ff5c6a';  // red
+  return '#ff2040';                 // critical red
+}
+
+function _renderBpnGraph() {
+  const svgEl = document.getElementById('bpn-svg');
+  if (!svgEl) return;
+
+  const W = svgEl.clientWidth || 700;
+  const H = 320;
+  const wi = _bpn.week - 1;
+
+  // Collect node values & compute domain for colour scaling
+  const nodeVals = {};
+  MODULES.forEach(id => { nodeVals[id] = getBpnNodeValue(id); });
+  const maxVal = Math.max(...Object.values(nodeVals), 1);
+
+  // Collect link activity
+  const linkActivity = _bpn.links.map(l => getLinkSpreadActivity(l, wi));
+  const maxActivity  = Math.max(...linkActivity, 1);
+
+  // Degree centrality → node radius (min 22, max 36)
+  const maxDegree = Math.max(..._bpn.nodes.map(n => n.degree), 1);
+  const nodeRadius = n => 22 + (n.degree / maxDegree) * 14;
+
+  // Only rebuild the force layout if it hasn't been created yet
+  if (!_bpn.force) {
+    d3.select('#bpn-svg').selectAll('*').remove();
+
+    const svgD3 = d3.select('#bpn-svg').attr('height', H);
+    const defs = svgD3.append('defs');
+
+    // Glow filter for high-bug nodes
+    const glow = defs.append('filter').attr('id', 'bpn-glow').attr('x','-40%').attr('y','-40%').attr('width','180%').attr('height','180%');
+    glow.append('feGaussianBlur').attr('stdDeviation', '5').attr('result', 'blur');
+    const mg = glow.append('feMerge');
+    mg.append('feMergeNode').attr('in','blur');
+    mg.append('feMergeNode').attr('in','SourceGraphic');
+
+    // Arrowhead marker for directional spread
+    defs.append('marker')
+      .attr('id','bpn-arrow').attr('viewBox','0 -4 8 8').attr('refX',8).attr('refY',0)
+      .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto')
+      .append('path').attr('d','M0,-4L8,0L0,4').attr('fill','#ffb547').attr('opacity',.7);
+
+    const g = svgD3.append('g').attr('id','bpn-g');
+
+    // Links layer
+    g.append('g').attr('id','bpn-links')
+      .selectAll('line')
+      .data(_bpn.links)
+      .enter().append('line')
+      .attr('class','bpn-link')
+      .attr('marker-end', 'url(#bpn-arrow)');
+
+    // Heat rings (animated, behind nodes)
+    g.append('g').attr('id','bpn-rings')
+      .selectAll('circle')
+      .data(_bpn.nodes)
+      .enter().append('circle')
+      .attr('class','bpn-heat-ring')
+      .attr('fill','none')
+      .attr('stroke-width', 3)
+      .attr('r', n => nodeRadius(n));
+
+    // Nodes
+    const nodeG = g.append('g').attr('id','bpn-nodes')
+      .selectAll('g')
+      .data(_bpn.nodes)
+      .enter().append('g')
+      .attr('class','bpn-node-g')
+      .style('cursor','pointer')
+      .call(d3.drag()
+        .on('start', (e, d) => { if (!e.active) _bpn.force.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+        .on('drag',  (e, d) => { d.fx=e.x; d.fy=e.y; })
+        .on('end',   (e, d) => { if (!e.active) _bpn.force.alphaTarget(0); d.fx=null; d.fy=null; })
+      );
+
+    nodeG.append('circle')
+      .attr('class','bpn-node-circle')
+      .attr('r', nodeRadius)
+      .attr('stroke','#262d3f').attr('stroke-width',1.5);
+
+    // Bug count label
+    nodeG.append('text')
+      .attr('class','bpn-bug-count')
+      .attr('text-anchor','middle').attr('dy',5)
+      .attr('fill','white')
+      .attr('font-family','JetBrains Mono,monospace')
+      .attr('font-size','12px').attr('font-weight','700')
+      .attr('pointer-events','none');
+
+    // Module name below node
+    nodeG.append('text')
+      .attr('class','bpn-node-label')
+      .attr('text-anchor','middle')
+      .attr('dy', n => nodeRadius(n) + 14)
+      .attr('fill','#5a6480')
+      .attr('font-family','Syne,sans-serif')
+      .attr('font-size','10px').attr('font-weight','600')
+      .attr('pointer-events','none')
+      .text(n => n.name);
+
+    // Tooltip
+    nodeG.on('mouseover', (event, d) => {
+        const v    = nodeVals[d.id];
+        const p90v = pctSorted(_bpnStats[d.id][wi], 90);
+        const modeLabel = {median:'Median bugs',p90:'90th-pct bugs',spread:'Spread risk',worst:'Worst-run bugs'}[_bpn.mode];
+        showTip(event,
+          `<strong>${d.name}</strong><br>` +
+          `${modeLabel}: ${v.toFixed(1)}<br>` +
+          `Median: ${pctSorted(_bpnStats[d.id][wi],50).toFixed(1)} · P90: ${p90v.toFixed(1)}<br>` +
+          `Connections: ${d.degree}`
+        );
+      })
+      .on('mousemove', event => {
+        const t = document.getElementById('tip');
+        t.style.left = (event.clientX+12)+'px';
+        t.style.top  = (event.clientY-10)+'px';
+      })
+      .on('mouseout', hideTip);
+
+    // Force layout
+    _bpn.force = d3.forceSimulation(_bpn.nodes)
+      .force('link', d3.forceLink(_bpn.links).id(d=>d.id).distance(110))
+      .force('charge', d3.forceManyBody().strength(-320))
+      .force('center', d3.forceCenter(W/2, H/2))
+      .force('collision', d3.forceCollide().radius(n => nodeRadius(n) + 8))
+      .on('tick', () => {
+        d3.select('#bpn-links').selectAll('line')
+          .attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+          .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+        d3.select('#bpn-nodes').selectAll('.bpn-node-g')
+          .attr('transform', d=>`translate(${d.x},${d.y})`);
+        d3.select('#bpn-rings').selectAll('circle')
+          .attr('cx',d=>d.x).attr('cy',d=>d.y);
+      });
+  }
+
+  // ── Data-driven visual update (runs on every mode/week change too) ──
+  d3.select('#bpn-nodes').selectAll('.bpn-node-circle')
+    .transition().duration(400)
+    .attr('fill', d => bugCountToColor(nodeVals[d.id], maxVal))
+    .attr('filter', d => nodeVals[d.id] / maxVal > 0.6 ? 'url(#bpn-glow)' : null);
+
+  d3.select('#bpn-nodes').selectAll('.bpn-bug-count')
+    .text(d => nodeVals[d.id] > 0 ? nodeVals[d.id].toFixed(1) : '');
+
+  d3.select('#bpn-rings').selectAll('circle')
+    .transition().duration(400)
+    .attr('stroke', d => bugCountToColor(nodeVals[d.id], maxVal))
+    .attr('opacity', d => Math.min(.8, nodeVals[d.id] / Math.max(maxVal, 1)) * .5)
+    .attr('r', d => nodeRadius(d) + nodeVals[d.id] / Math.max(maxVal, 1) * 10);
+
+  d3.select('#bpn-links').selectAll('line')
+    .data(_bpn.links)
+    .transition().duration(400)
+    .attr('stroke', (d, i) => {
+      const act = linkActivity[i] / maxActivity;
+      if (act < 0.1) return '#1e2433';
+      if (act < 0.4) return '#ffb547';
+      return '#ff5c6a';
+    })
+    .attr('stroke-width', d => 1 + d.w * 4)
+    .attr('stroke-opacity', (d, i) => 0.3 + (linkActivity[i] / maxActivity) * 0.7);
+}
+
+// ── Public controls (called from HTML) ──
+
+function setBpnMode(mode) {
+  _bpn.mode = mode;
+  document.querySelectorAll('.bpn-mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('bpn-btn-' + mode).classList.add('active');
+  _renderBpnGraph();
+}
+
+function onBpnWeekSlide(week) {
+  _bpn.week = week;
+  document.getElementById('bpn-week-val').textContent = week;
+  _renderBpnGraph();
+}
+
+function drawHistogram(wrapperId, axisId, data, domainMin, domainMax, color, suffix) {
+  const wrap = document.getElementById(wrapperId);
+  const axisEl = document.getElementById(axisId);
+  const BINS = 20;
+  const range = domainMax - domainMin || 1;
+  const binSize = range / BINS;
+  const counts = Array(BINS).fill(0);
+  data.forEach(v => {
+    const bi = Math.min(BINS-1, Math.floor((v - domainMin) / binSize));
+    counts[bi]++;
+  });
+  const maxCount = Math.max(...counts);
+  wrap.innerHTML = counts.map((c,i) => {
+    const h = maxCount > 0 ? (c/maxCount*100) : 0;
+    const lo = (domainMin + i*binSize).toFixed(0);
+    return `<div class="hist-bar" style="height:${Math.max(2,h)}%;background:${color}" title="${lo}${suffix}: ${c} runs"></div>`;
+  }).join('');
+  // axis labels at 0%, 25%, 50%, 75%, 100%
+  const labels = [0,.25,.5,.75,1].map(f => (domainMin + f*range).toFixed(0) + suffix);
+  axisEl.innerHTML = labels.map(l=>`<span>${l}</span>`).join('');
+}
+
+function drawCISection(metrics) {
+  const container = document.getElementById('ci-rows');
+  container.innerHTML = '';
+  metrics.forEach(({label, arr, color, suffix, invert, scale}) => {
+    const lo = percentile(arr,5), hi = percentile(arr,95), med = median(arr);
+    const dom = scale || 100;
+    const loP = (lo/dom*100).toFixed(1);
+    const hiP = (hi/dom*100).toFixed(1);
+    const medP = (med/dom*100).toFixed(1);
+
+    const div = document.createElement('div');
+    div.style.marginBottom = '14px';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px">
+        <span style="color:var(--muted)">${label}</span>
+        <span style="font-family:'JetBrains Mono',monospace;color:${color}">Med: ${typeof med==='number'&&med%1!==0?med.toFixed(1):Math.round(med)}${suffix}</span>
+      </div>
+      <div class="ci-bar">
+        <div class="ci-fill" style="left:${loP}%;width:${hiP-loP}%;background:${color};opacity:.18;border-color:${color}"></div>
+        <div class="ci-median" style="left:${medP}%;background:${color}"></div>
+      </div>
+      <div class="ci-labels">
+        <span>5th: ${lo.toFixed(1)}${suffix}</span>
+        <span>95th: ${hi.toFixed(1)}${suffix}</span>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function drawTimelineOverlay(fullRuns) {
+  const svg = document.getElementById('mc-timeline-svg');
+  const W = svg.clientWidth, H = svg.clientHeight || 200;
+  const margin = {top:10,right:10,bottom:24,left:36};
+  const iW = W-margin.left-margin.right, iH = H-margin.top-margin.bottom;
+
+  // Sort by final stability
+  const sorted = [...fullRuns].sort((a,b)=>b.stability-a.stability);
+  const best   = sorted[0];
+  const worst  = sorted[sorted.length-1];
+  const medRun = sorted[Math.floor(sorted.length/2)];
+
+  // Build per-week band (10th–90th percentile) across all runs
+  const allByWeek = [];
+  for (let w=0;w<52;w++) {
+    const vals = fullRuns.map(r=>r.history[w]?.stability??0);
+    allByWeek.push({week:w+1, p10:percentile(vals,10), p90:percentile(vals,90), med:median(vals)});
+  }
+
+  const xS = d3.scaleLinear().domain([1,52]).range([0,iW]);
+  const yS = d3.scaleLinear().domain([0,100]).range([iH,0]);
+
+  const svgD3 = d3.select('#mc-timeline-svg');
+  svgD3.selectAll('*').remove();
+  svgD3.attr('width',W).attr('height',H);
+  const g = svgD3.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  // band
+  const area = d3.area().x(d=>xS(d.week)).y0(d=>yS(d.p10)).y1(d=>yS(d.p90)).curve(d3.curveMonotoneX);
+  g.append('path').datum(allByWeek).attr('fill','rgba(91,163,255,.12)').attr('d',area);
+
+  const line = (data,color,dash,w=1.5) => {
+    const l = d3.line().x(d=>xS(d.week)).y(d=>yS(d.stability)).curve(d3.curveMonotoneX);
+    g.append('path').datum(data).attr('fill','none').attr('stroke',color).attr('stroke-width',w).attr('stroke-dasharray',dash||null).attr('d',l);
+  };
+
+  line(worst.history,'var(--danger)','3,3',1);
+  line(medRun.history,'var(--info)',null,1.5);
+  line(best.history,'var(--primary)',null,2);
+
+  // axes
+  g.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(6).tickFormat(d=>'W'+d))
+    .call(gg=>{gg.select('.domain').remove();gg.selectAll('line').attr('stroke','var(--border2)');gg.selectAll('text').attr('fill','var(--muted2)').attr('font-size','10px');});
+  g.append('g').call(d3.axisLeft(yS).ticks(4).tickFormat(d=>d+'%'))
+    .call(gg=>{gg.select('.domain').remove();gg.selectAll('line').attr('stroke','var(--border2)');gg.selectAll('text').attr('fill','var(--muted2)').attr('font-size','10px');});
+}
+
+// ================================================================
+// OPTIMIZER — GENETIC ALGORITHM
+// ================================================================
+const PARAM_BOUNDS = {
+  teamSize:         {min:1, max:20, step:1},
+  deadlinePressure: {min:0, max:100,step:5},
+  meetingOverhead:  {min:0, max:60, step:5},
+  testCoverage:     {min:0, max:100,step:5},
+  techDebt:         {min:0, max:100,step:5},
+  coupling:         {min:0, max:100,step:5}
+};
+
+const PARAM_DISPLAY = {
+  teamSize:'Team Size', deadlinePressure:'Deadline Pressure',
+  meetingOverhead:'Meeting Overhead', testCoverage:'Test Coverage',
+  techDebt:'Tech Debt', coupling:'Module Coupling'
+};
+
+const PARAM_SUFFIX = {teamSize:'',deadlinePressure:'%',meetingOverhead:'%',testCoverage:'%',techDebt:'%',coupling:'%'};
+
+let weights = {stability:40, features:25, burnout:20, bugs:15};
+let searchSpace = {};
+Object.keys(PARAM_BOUNDS).forEach(k => { searchSpace[k] = [PARAM_BOUNDS[k].min, PARAM_BOUNDS[k].max]; });
+let gaSettings = {popSize:80, generations:40};
+
+const RANGE_LABELS = {
+  teamSize:'opt-range-team',deadlinePressure:'opt-range-dp',
+  meetingOverhead:'opt-range-mo',testCoverage:'opt-range-tc',
+  techDebt:'opt-range-td',coupling:'opt-range-cp'
+};
+
+const RANGE_SUFFIX = {teamSize:'',deadlinePressure:'%',meetingOverhead:'%',testCoverage:'%',techDebt:'%',coupling:'%'};
+
+function setRange(key, idx, val) {
+  searchSpace[key][idx] = val;
+  const [lo,hi] = searchSpace[key];
+  const s = RANGE_SUFFIX[key];
+  document.getElementById(RANGE_LABELS[key]).textContent = `${lo}${s} – ${hi}${s}`;
+}
+
+function setWeight(key, val, el) {
+  weights[key] = val;
+  const ids = {stability:'w-stab-val',features:'w-feat-val',burnout:'w-burn-val',bugs:'w-bugs-val'};
+  document.getElementById(ids[key]).textContent = val+'%';
+}
+
+// Fitness: composite score normalised 0–100
+function fitness(params) {
+  // Run multiple times to reduce noise
+  const REPS = 5;
+  let sumStab=0,sumBurn=0,sumFeat=0,sumBugs=0;
+  for(let i=0;i<REPS;i++){
+    const r=runSim(params);
+    sumStab+=r.stability; sumBurn+=r.burnout; sumFeat+=r.features; sumBugs+=r.bugs;
+  }
+  const stab=sumStab/REPS, burn=sumBurn/REPS, feat=sumFeat/REPS, bug=sumBugs/REPS;
+  const total=weights.stability+weights.features+weights.burnout+weights.bugs||1;
+  // Normalise features (rough max ~500), bugs (max ~80)
+  const stabN=stab/100, featN=Math.min(1,feat/400), burnN=(100-burn)/100, bugN=(80-Math.min(80,bug))/80;
+  return (weights.stability*stabN + weights.features*featN + weights.burnout*burnN + weights.bugs*bugN) / total * 100;
+}
+
+function randomParam(key) {
+  const [lo,hi]=searchSpace[key];
+  const step=PARAM_BOUNDS[key].step;
+  const steps=Math.floor((hi-lo)/step);
+  return lo + Math.floor(Math.random()*(steps+1))*step;
+}
+
+function randomIndividual() {
+  const p={};
+  Object.keys(PARAM_BOUNDS).forEach(k=>p[k]=randomParam(k));
+  return p;
+}
+
+function mutate(p) {
+  const child={...p};
+  const key=Object.keys(PARAM_BOUNDS)[Math.floor(Math.random()*6)];
+  child[key]=randomParam(key);
+  return child;
+}
+
+function crossover(a,b) {
+  const child={};
+  Object.keys(PARAM_BOUNDS).forEach(k=>{ child[k]=Math.random()<0.5?a[k]:b[k]; });
+  return child;
+}
+
+function paretoNonDominated(population) {
+  return population.filter((a,i) => {
+    return !population.some((b,j) => {
+      if(i===j) return false;
+      // b dominates a if b is >= in all and > in at least one
+      const bStab=b._stab??0, aStab=a._stab??0;
+      const bFeat=b._feat??0, aFeat=a._feat??0;
+      return bStab>=aStab && bFeat>=aFeat && (bStab>aStab||bFeat>aFeat);
+    });
+  });
+}
+
+let optResults = null;
+let defaultParams = null;
+
+function runOptimizer() {
+  const btn=document.getElementById('opt-run-btn');
+  btn.disabled=true;
+  setStatus('run','Optimizing…');
+  document.getElementById('opt-progress-wrap').style.display='block';
+  document.getElementById('opt-empty').style.display='none';
+  const resEl=document.getElementById('opt-results');
+  resEl.style.display='flex';
+  const genLog=document.getElementById('gen-log');
+  genLog.style.display='block';
+  genLog.innerHTML='';
+
+  const POP=gaSettings.popSize;
+  const GENS=gaSettings.generations;
+  let population=Array.from({length:POP},randomIndividual);
+  let fitnessScores=population.map(p=>({p,f:fitness(p)}));
+
+  // store default params for delta display
+  // Use the midpoint of search space as reference
+  defaultParams={};
+  Object.keys(PARAM_BOUNDS).forEach(k=>{ defaultParams[k]=Math.round((searchSpace[k][0]+searchSpace[k][1])/2); });
+
+  const convergence=[]; // best fitness per gen
+  let allEvaluated=[];
+  let gen=0;
+
+  function runGen() {
+    if(gen>=GENS){ finalizeOpt(allEvaluated, convergence); return; }
+
+    // Sort by fitness desc
+    fitnessScores.sort((a,b)=>b.f-a.f);
+    const elite=fitnessScores.slice(0,Math.ceil(POP*0.2)).map(x=>x.p);
+    const best=fitnessScores[0];
+    convergence.push({gen:gen+1, best:best.f, avg:mean(fitnessScores.map(x=>x.f))});
+
+    // Annotate best with sim outcomes for pareto
+    const bSim=runSim(best.p); best.p._stab=bSim.stability; best.p._feat=bSim.features;
+    allEvaluated.push({params:{...best.p},fitness:best.f,stab:bSim.stability,feat:bSim.features,burn:bSim.burnout,bugs:bSim.bugs});
+
+    // Log
+    const entry=document.createElement('div');
+    entry.className='gen-entry'+(gen===0||best.f===Math.max(...convergence.map(c=>c.best))?' best':'');
+    entry.textContent=`Gen ${gen+1}/${GENS}  best=${best.f.toFixed(1)}  avg=${convergence[gen].avg.toFixed(1)}`;
+    genLog.appendChild(entry);
+    genLog.scrollTop=genLog.scrollHeight;
+
+    // Progress
+    const pct=(gen+1)/GENS*100;
+    document.getElementById('opt-progress-fill').style.width=pct+'%';
+    document.getElementById('opt-progress-label').textContent=`Gen ${gen+1} / ${GENS}`;
+
+    // Breed next gen
+    const next=[];
+    elite.forEach(e=>next.push({...e})); // elitism
+    while(next.length<POP){
+      const p1=elite[Math.floor(Math.random()*elite.length)];
+      const p2=fitnessScores[Math.floor(Math.random()*Math.min(POP,20))].p;
+      let child=crossover(p1,p2);
+      if(Math.random()<0.3) child=mutate(child);
+      next.push(child);
+    }
+    fitnessScores=next.map(p=>({p,f:fitness(p)}));
+    gen++;
+    setTimeout(runGen,0);
+  }
+  runGen();
+}
+
+function finalizeOpt(allEvaluated, convergence) {
+  // Best overall
+  allEvaluated.sort((a,b)=>b.fitness-a.fitness);
+  const best=allEvaluated[0];
+  optResults={best,allEvaluated,convergence};
+
+  document.getElementById('opt-score-val').textContent=best.fitness.toFixed(1);
+
+  // Headline
+  const stab=best.stab, burn=best.burn;
+  const headline= stab>70&&burn<40 ? 'Highly sustainable, high-quality delivery'
+    : stab>50&&burn<60 ? 'Balanced delivery with manageable risk'
+    : stab>30 ? 'Aggressive delivery, elevated burnout risk'
+    : 'Marginal — consider adjusting constraints';
+  document.getElementById('opt-headline').textContent=headline;
+
+  // Param grid
+  const grid=document.getElementById('opt-params-grid');
+  grid.innerHTML=Object.keys(PARAM_BOUNDS).map(k=>{
+    const val=best.params[k];
+    const mid=Math.round((searchSpace[k][0]+searchSpace[k][1])/2);
+    const diff=val-mid;
+    const s=PARAM_SUFFIX[k];
+    const changeHTML=diff===0?`<div class="opt-param-change same">↔ at midpoint</div>`:
+      `<div class="opt-param-change ${diff>0?'up':'down'}">${diff>0?'↑ higher':'↓ lower'} than center</div>`;
+    return `<div class="opt-param">
+      <div class="opt-param-name">${PARAM_DISPLAY[k]}</div>
+      <div class="opt-param-val">${val}${s}</div>
+      ${changeHTML}
+    </div>`;
+  }).join('');
+
+  // Outcome chips: run 100 MC on best params
+  let sumS=0,sumB=0,sumF=0,sumBg=0;
+  for(let i=0;i<100;i++){
+    const r=runSim(best.params);
+    sumS+=r.stability;sumB+=r.burnout;sumF+=r.features;sumBg+=r.bugs;
+  }
+  const n=100;
+  const ocColor=(v,thHigh,thLow,invert)=>!invert?(v>=thHigh?'var(--primary)':v>=thLow?'var(--warn)':'var(--danger)'):(v<=thLow?'var(--primary)':v<=thHigh?'var(--warn)':'var(--danger)');
+
+  const mS=(sumS/n).toFixed(1), mB=(sumB/n).toFixed(1), mF=Math.round(sumF/n), mBg=Math.round(sumBg/n);
+  document.getElementById('opt-outcomes-grid').innerHTML=`
+    <div class="outcome-chip"><div class="outcome-chip-val" style="color:${ocColor(mS,70,40,false)}">${mS}%</div><div class="outcome-chip-label">Stability</div></div>
+    <div class="outcome-chip"><div class="outcome-chip-val" style="color:${ocColor(mB,40,70,true)}">${mB}%</div><div class="outcome-chip-label">Burnout</div></div>
+    <div class="outcome-chip"><div class="outcome-chip-val" style="color:var(--info)">${mF}</div><div class="outcome-chip-label">Features</div></div>
+    <div class="outcome-chip"><div class="outcome-chip-val" style="color:${ocColor(mBg,5,20,true)}">${mBg}</div><div class="outcome-chip-label">Bugs</div></div>
+  `;
+
+  // Pareto frontier
+  const nonDom=paretoNonDominated(allEvaluated.map(r=>({...r,_stab:r.stab,_feat:r.feat})));
+  drawPareto(allEvaluated, nonDom, best);
+
+  // Convergence
+  drawConvergence(convergence);
+
+  document.getElementById('opt-run-btn').disabled=false;
+  document.getElementById('opt-progress-wrap').style.display='none';
+  setStatus('done',`Done — Gen ${gaSettings.generations}`);
+}
+
+function drawPareto(all, nonDom, best) {
+  const svgEl=document.getElementById('pareto-svg');
+  const W=svgEl.clientWidth, H=200;
+  const margin={top:10,right:14,bottom:28,left:40};
+  const iW=W-margin.left-margin.right, iH=H-margin.top-margin.bottom;
+
+  const xS=d3.scaleLinear().domain([0,100]).range([0,iW]);
+  const yS=d3.scaleLinear().domain([0,d3.max(all,d=>d.feat)*1.05||100]).range([iH,0]);
+  const rS=d3.scaleSqrt().domain([0,100]).range([3,12]);
+
+  const svgD3=d3.select('#pareto-svg');
+  svgD3.selectAll('*').remove();
+  svgD3.attr('height',H);
+  const g=svgD3.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  // all points
+  g.selectAll('.pt-all').data(all).enter().append('circle')
+    .attr('cx',d=>xS(d.stab)).attr('cy',d=>yS(d.feat))
+    .attr('r',d=>rS(d.fitness))
+    .attr('fill','var(--muted2)').attr('opacity',.4);
+
+  // pareto frontier points
+  const ndIds=new Set(nonDom.map((_,i)=>i));
+  g.selectAll('.pt-nd').data(nonDom).enter().append('circle')
+    .attr('cx',d=>xS(d.stab)).attr('cy',d=>yS(d.feat))
+    .attr('r',d=>rS(d.fitness))
+    .attr('fill','var(--info)').attr('opacity',.8)
+    .on('mouseover',(event,d)=>{
+      showTip(event,`Stab ${d.stab.toFixed(0)}%  Feat ${Math.round(d.feat)}  Score ${d.fitness.toFixed(1)}`);
+    }).on('mouseout',hideTip);
+
+  // best point
+  g.append('circle').attr('cx',xS(best.stab)).attr('cy',yS(best.feat))
+    .attr('r',10).attr('fill','var(--primary)').attr('opacity',1)
+    .attr('stroke','white').attr('stroke-width',1.5);
+  g.append('text').attr('x',xS(best.stab)+13).attr('y',yS(best.feat)+4)
+    .attr('fill','var(--primary)').attr('font-size','10px').attr('font-family','JetBrains Mono,monospace')
+    .text('Best');
+
+  // pareto front line
+  const ndSorted=[...nonDom].sort((a,b)=>a.stab-b.stab);
+  if(ndSorted.length>1){
+    const lineGen=d3.line().x(d=>xS(d.stab)).y(d=>yS(d.feat));
+    g.append('path').datum(ndSorted).attr('fill','none').attr('stroke','var(--info)').attr('stroke-width',1)
+      .attr('stroke-dasharray','4,3').attr('opacity',.5).attr('d',lineGen);
+  }
+
+  // axes
+  g.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(5).tickFormat(d=>d+'%'))
+    .call(gg=>{gg.select('.domain').remove();gg.selectAll('text').attr('fill','var(--muted2)').attr('font-size','9px');gg.selectAll('line').remove();});
+  g.append('g').call(d3.axisLeft(yS).ticks(4))
+    .call(gg=>{gg.select('.domain').remove();gg.selectAll('text').attr('fill','var(--muted2)').attr('font-size','9px');gg.selectAll('line').remove();});
+
+  g.append('text').attr('x',iW/2).attr('y',iH+22).attr('text-anchor','middle').attr('fill','var(--muted2)').attr('font-size','9px').text('Stability →');
+  g.append('text').attr('transform','rotate(-90)').attr('x',-iH/2).attr('y',-30).attr('text-anchor','middle').attr('fill','var(--muted2)').attr('font-size','9px').text('← Features Shipped');
+
+  document.getElementById('pareto-count').textContent=`  ${nonDom.length} non-dominated`;
+}
+
+function drawConvergence(data) {
+  const svgEl=document.getElementById('conv-svg');
+  const W=svgEl.clientWidth, H=160;
+  const margin={top:8,right:10,bottom:24,left:40};
+  const iW=W-margin.left-margin.right, iH=H-margin.top-margin.bottom;
+
+  const xS=d3.scaleLinear().domain([1,data.length]).range([0,iW]);
+  const yS=d3.scaleLinear().domain([0,100]).range([iH,0]);
+
+  const svgD3=d3.select('#conv-svg');
+  svgD3.selectAll('*').remove();
+  svgD3.attr('height',H);
+  const g=svgD3.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  const bestLine=d3.line().x(d=>xS(d.gen)).y(d=>yS(d.best)).curve(d3.curveMonotoneX);
+  const avgLine=d3.line().x(d=>xS(d.gen)).y(d=>yS(d.avg)).curve(d3.curveMonotoneX);
+
+  const areaGen=d3.area().x(d=>xS(d.gen)).y0(d=>yS(d.avg)).y1(d=>yS(d.best)).curve(d3.curveMonotoneX);
+  g.append('path').datum(data).attr('fill','rgba(79,255,176,.06)').attr('d',areaGen);
+
+  g.append('path').datum(data).attr('fill','none').attr('stroke','var(--muted2)').attr('stroke-width',1.2).attr('stroke-dasharray','3,3').attr('d',avgLine);
+  g.append('path').datum(data).attr('fill','none').attr('stroke','var(--primary)').attr('stroke-width',2).attr('d',bestLine);
+
+  g.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(6).tickFormat(d=>'G'+d))
+    .call(gg=>{gg.select('.domain').remove();gg.selectAll('text').attr('fill','var(--muted2)').attr('font-size','9px');gg.selectAll('line').remove();});
+  g.append('g').call(d3.axisLeft(yS).ticks(4).tickFormat(d=>d.toFixed(0)))
+    .call(gg=>{gg.select('.domain').remove();gg.selectAll('text').attr('fill','var(--muted2)').attr('font-size','9px');gg.selectAll('line').remove();});
+}
+
+// ================================================================
+// TAB SWITCHING
+// ================================================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById('view-'+tab).classList.add('active');
+}
+
+// ================================================================
+// STATUS BADGE
+// ================================================================
+function setStatus(type, text) {
+  const el=document.getElementById('status-badge');
+  el.textContent=text;
+  el.className='badge badge-'+type;
+}
+
+// ================================================================
+// TOOLTIP
+// ================================================================
+function showTip(event, html) {
+  const t=document.getElementById('tip');
+  t.innerHTML=html; t.classList.add('show');
+  t.style.left=(event.clientX+12)+'px';
+  t.style.top=(event.clientY-10)+'px';
+}
+function hideTip(){ document.getElementById('tip').classList.remove('show'); }
+</script>
 </body>
 </html>
